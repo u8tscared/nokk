@@ -350,7 +350,8 @@ button.row:active, a.row:active { background: var(--well); }
 .capsule.demo i { background: var(--accent-2); }
 .capsule.on-map { bottom: auto; top: calc(var(--safe-t) + 62px); }
 .capsule.demo { background: var(--accent-2-tint); color: var(--accent-2-ink); left: auto; right: max(12px, var(--safe-r)); }
-@media (min-width: 700px) { .capsule.on-map { top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); } }
+@media (min-width: 700px) and (max-width: 959px) { .capsule.on-map { top: auto; bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 12px); } }
+@media (min-width: 960px) { .capsule.on-map { top: auto; bottom: 16px; transform: translateX(-50%); } }
 @media (min-width: 960px) { .capsule { left: 272px; bottom: 16px; } .capsule.on-map { left: calc(50% + 128px); } }
 
 /* Pavé numérique */
