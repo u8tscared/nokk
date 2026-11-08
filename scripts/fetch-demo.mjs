@@ -1,6 +1,7 @@
 // Récupère une vraie zone (rues + adresses OpenStreetMap) pour le mode démo.
 // Lancé par GitHub Actions (le réseau y est ouvert). Résultat : public/demo/area.json
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+mkdirSync('public/demo', { recursive: true });
 
 const MIRRORS = [
   'https://overpass-api.de/api/interpreter',
@@ -19,7 +20,7 @@ const R = 420;
 async function overpass(q) {
   for (const m of MIRRORS) {
     try {
-      const r = await fetch(m, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+      const r = await fetch(m, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'nokk-demo/1.0 (+https://github.com/u8tscared/nokk)', accept: 'application/json' } });
       if (r.ok) return await r.json();
       console.log(m, r.status);
     } catch (e) { console.log(m, e.message); }
@@ -42,7 +43,7 @@ out center tags;`;
     console.log(c.town, 'ways', ways.length, 'named', named.size, 'addr', addrs.length);
     out.push({ ...c, radius: R, elements: j.elements, score: Math.min(addrs.length, 650) + named.size * 5 });
   } catch (e) { console.log(c.town, e.message); }
-  await new Promise(r => setTimeout(r, 4000));
+  await new Promise(r => setTimeout(r, 8000));
 }
 out.sort((a, b) => b.score - a.score);
 writeFileSync('public/demo/candidates.json', JSON.stringify(out.map(({ elements, ...r }) => r), null, 1));
