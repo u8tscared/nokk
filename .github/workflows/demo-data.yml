@@ -1,0 +1,22 @@
+name: demo-data
+on:
+  push:
+    branches: [data/demo-area]
+    paths: [scripts/fetch-demo.mjs, .github/workflows/demo-data.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/fetch-demo.mjs
+      - run: |
+          git config user.name "nokk-bot"
+          git config user.email "nokk-bot@users.noreply.github.com"
+          git add public/demo
+          git commit -m "Données de démo OpenStreetMap" || echo nothing
+          git push
