@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Avatar, Empty, toast, confetti, DotIcon, Bump, Seg, Field, Pill, Progress } from '../ui/ui.jsx';
-import { data, me, memberById, addHandover, removeVisit, updateVisit, demo, role, mergeData, exportData } from '../lib/store.js';
+import { data, setData, me, memberById, addHandover, removeVisit, updateVisit, demo, role, mergeData, exportData } from '../lib/store.js';
 import { formatEuro, totals, countCash, reconcile, DENOMS, RESULTS, METHODS, groupBy } from '../lib/model.js';
 import { pocket, breakdown, csv, chequeList } from '../lib/compta.js';
 import { openSheet, go } from '../lib/nav.js';
@@ -324,7 +324,7 @@ function EditVisit({ v, close }) {
       )}
       <Field id="ename" label="Nom"><input id="ename" class="input" value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} enterKeyHint="done" /></Field>
       <div class="sticky-action">
-        <Button kind="danger" type="button" icon="trash" onClick={() => { const snap = v; removeVisit(v.id); close(); toast('Passage supprimé', { undo: () => { data.value = { ...data.value, visits: [...data.value.visits, snap].sort((a, b) => a.ts - b.ts) }; } }); }}>Supprimer</Button>
+        <Button kind="danger" type="button" icon="trash" onClick={() => { const snap = v; removeVisit(v.id); close(); toast('Passage supprimé', { undo: () => setData((x) => ({ ...x, visits: [...x.visits, snap].sort((a, b) => a.ts - b.ts) })) }); }}>Supprimer</Button>
         <Button kind="grow" type="submit" sound="" class="grow">Enregistrer</Button>
       </div>
     </form>

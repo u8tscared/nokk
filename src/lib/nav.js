@@ -60,10 +60,12 @@ export function go(r, { replace = false } = {}) {
     document.querySelector('.page-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const hadSheets = sheets.value.length > 0;
   sheets.value = [];
   route.value = r;
   const url = '#' + r;
-  if (replace) history.replaceState({ r }, '', url);
+  // Depuis une fenêtre ouverte : on remplace son entrée d'historique (pas de retour fantôme).
+  if (replace || hadSheets) history.replaceState({ r }, '', url);
   else history.pushState({ r }, '', url);
 }
 
@@ -84,10 +86,9 @@ export function closeSheet(id) {
   else sheets.value = sheets.value.slice(0, -1);
 }
 export function closeAllSheets() {
-  const n = sheets.value.length;
-  if (!n) return;
+  if (!sheets.value.length) return;
   sheets.value = [];
-  if (history.state?.sheet) history.go(-n);
+  history.replaceState({ r: route.value }, '', '#' + route.value);
 }
 
 export function installRouter() {

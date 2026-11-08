@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Icon, Logo, Wordmark } from './ui/icons.jsx';
 import { Avatar, Button, SheetHost, Toasts } from './ui/ui.jsx';
-import { data, demo, me, online, settings } from './lib/store.js';
+import { data, demo, me, online, settings, saveError } from './lib/store.js';
 import { route, go, menuFor, tabsFor, allowed, MENU, sheets } from './lib/nav.js';
 import { feel } from './lib/feedback.js';
 import { MapScreen, quickLog } from './screens/MapScreen.jsx';
@@ -77,7 +77,8 @@ function Capsules() {
   const off = !online.value;
   return (
     <>
-      {off && <div class="capsule" role="status"><i /> Hors ligne · tout est gardé sur le téléphone</div>}
+      {off && <div class={'capsule' + (route.value === 'carte' ? ' on-map' : '')} role="status"><i /> Hors ligne · tout est gardé</div>}
+      {saveError.value && <button class="capsule demo" style={{ pointerEvents: 'auto' }} onClick={() => go('exports')}><i /> Mémoire du téléphone pleine · exportez une sauvegarde</button>}
       {demo.value && route.value !== 'carte' && <div class="capsule demo" role="status"><i /> Mode démo</div>}
     </>
   );

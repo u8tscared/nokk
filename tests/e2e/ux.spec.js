@@ -5,7 +5,7 @@ import { startDemo, isDesktop } from './helpers.js';
 test('clavier : le champ et le bouton restent visibles au-dessus du clavier', async ({ page }) => {
   test.skip(isDesktop(page), 'pas de clavier virtuel sur ordinateur');
   await startDemo(page);
-  await page.getByTestId('next-door').first().click();
+  await page.locator('[data-testid=next-door]:visible').click();
   await page.getByRole('button', { name: 'Nom, appartement, note' }).click();
   const field = page.locator('#dnote');
   await field.focus();
@@ -38,7 +38,7 @@ test('clavier : faux positifs évités (pas de champ, pas de clavier)', async ({
 
 test('le bon clavier sur chaque champ', async ({ page }) => {
   await startDemo(page);
-  await page.getByTestId('next-door').first().click();
+  await page.locator('[data-testid=next-door]:visible').click();
   await page.getByRole('button', { name: 'Chèque' }).click();
   await page.getByRole('button', { name: 'Nom, appartement, note' }).click();
   await expect(page.locator('#dname')).toHaveAttribute('autocapitalize', 'words');
@@ -84,8 +84,9 @@ test('écran figé : une liste qui défile reste libre', async ({ page }) => {
 test('fenêtre du bas : on la ferme en la tirant par sa poignée', async ({ page }) => {
   test.skip(isDesktop(page), 'fenêtre centrée sur ordinateur');
   await startDemo(page);
-  await page.getByTestId('next-door').first().click();
+  await page.locator('[data-testid=next-door]:visible').click();
   const grip = page.locator('.sheet-grip');
+  await page.waitForTimeout(500); // fin de l'animation d'ouverture
   const g = await grip.boundingBox();
   await page.mouse.move(g.x + g.width / 2, g.y + 10);
   await page.mouse.down();

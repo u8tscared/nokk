@@ -45,10 +45,25 @@ export const position = signal(null); // { p:[lon,lat], acc, heading, ts }
 export const geoState = signal('idle'); // idle | asking | on | denied | unavailable
 
 let saveTimer = 0;
+export const saveError = signal(false);
+function flush() {
+  clearTimeout(saveTimer);
+  saveTimer = 0;
+  if (demo.value) return;
+  const ok = write(KEY, data.value);
+  saveError.value = !ok;
+  if (ok) lastSaved.value = Date.now();
+}
 function persist() {
   if (demo.value) return;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { if (write(KEY, data.value)) lastSaved.value = Date.now(); }, 120);
+  saveTimer = setTimeout(flush, 120);
+}
+if (typeof window !== 'undefined') {
+  // Rien ne se perd si l'app est fermée juste après une saisie.
+  window.addEventListener('pagehide', () => saveTimer && flush());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) flush(); });
+  window.addEventListener('beforeunload', () => saveTimer && flush());
 }
 export function saveSettings(patch) {
   settings.value = { ...settings.value, ...patch };

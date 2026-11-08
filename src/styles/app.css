@@ -201,6 +201,7 @@ textarea.input { padding: 14px 16px; min-height: 96px; resize: vertical; }
 button.row:active, a.row:active { background: var(--well); }
 .row + .row { border-top: 1px solid var(--rim); }
 .row .grow { flex: 1; min-width: 0; }
+.row .t, .row .s { display: block; }
 .row .t { font-weight: 700; font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .s { color: var(--muted); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .end { text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -340,15 +341,17 @@ button.row:active, a.row:active { background: var(--well); }
 
 /* Capsule hors ligne */
 .capsule {
-  position: fixed; z-index: 70; left: max(12px, var(--safe-l)); top: calc(var(--safe-t) + 62px); white-space: nowrap;
+  position: fixed; z-index: 70; left: max(12px, var(--safe-l)); bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 12px); white-space: nowrap; pointer-events: none;
   display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 99px;
   background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700; box-shadow: var(--sh-float);
   animation: toastin var(--t-mid) var(--spring-soft) both;
 }
 .capsule i { width: 8px; height: 8px; border-radius: 50%; background: var(--st-repasser); }
 .capsule.demo i { background: var(--accent-2); }
-.capsule.demo { background: var(--accent-2-tint); color: var(--accent-2-ink); top: auto; left: auto; right: max(12px, var(--safe-r)); bottom: calc(var(--tabbar-h) + var(--safe-b) + 22px); }
-@media (min-width: 960px) { .capsule { left: 272px; top: 16px; } .capsule.demo { bottom: 16px; top: auto; } }
+.capsule.on-map { bottom: auto; top: calc(var(--safe-t) + 62px); }
+.capsule.demo { background: var(--accent-2-tint); color: var(--accent-2-ink); left: auto; right: max(12px, var(--safe-r)); }
+@media (min-width: 700px) { .capsule.on-map { top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); } }
+@media (min-width: 960px) { .capsule { left: 272px; bottom: 16px; } .capsule.on-map { left: calc(50% + 128px); } }
 
 /* Pavé numérique */
 .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

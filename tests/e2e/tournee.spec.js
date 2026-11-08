@@ -7,7 +7,7 @@ const count = (page) => page.evaluate(() => window.__nokk.store.data.value.visit
 test('saisir un don puis un absent, avec annulation', async ({ page }) => {
   const errors = await startDemo(page);
   const before = await count(page);
-  await page.getByTestId('next-door').first().click();
+  await page.locator('[data-testid=next-door]:visible').click();
   const sheet = page.getByRole('dialog');
   await expect(sheet).toBeVisible();
   const title1 = await sheet.locator('h2').first().textContent();
@@ -33,7 +33,7 @@ test('saisir un don puis un absent, avec annulation', async ({ page }) => {
 
 test('le bouton retour ferme la fenêtre avant de quitter l\'écran', async ({ page }) => {
   await startDemo(page);
-  await page.getByTestId('next-door').first().click();
+  await page.locator('[data-testid=next-door]:visible').click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -124,5 +124,5 @@ test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) 
   await page.reload();
   await expect(page.getByTestId('screen-carte')).toBeVisible();
   expect(await page.evaluate(() => window.__nokk.store.data.value.sectors.length)).toBe(1);
-  await expect(page.getByTestId('next-door').first()).toBeVisible();
+  await expect(page.locator('[data-testid=next-door]:visible')).toBeVisible();
 });
