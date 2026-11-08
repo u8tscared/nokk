@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+p.on('console', (m) => console.log('console', m.type(), m.text().slice(0, 300)));
+p.on('pageerror', (e) => console.log('pageerror', e.message));
+await p.goto('http://localhost:4173/');
+await p.waitForTimeout(1200);
+await p.click('[data-testid=demo]');
+await p.waitForTimeout(4000);
+console.log(await p.evaluate(() => { const m = window.__nokkMap; if (!m) return 'nomap'; const c = m.getContainer().getBoundingClientRect(); return JSON.stringify({ loaded: m.loaded(), styleLoaded: m.isStyleLoaded(), layers: m.getStyle()?.layers?.map(l => l.id), w: c.width, h: c.height, zoom: m.getZoom(), center: m.getCenter() }); }));
+await b.close();

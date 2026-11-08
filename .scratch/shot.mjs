@@ -1,0 +1,18 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+const p = await ctx.newPage();
+const errs = [];
+p.on('pageerror', (e) => errs.push('pageerror ' + e.message));
+p.on('console', (m) => { if (m.type() === 'error') errs.push('console ' + m.text().slice(0, 200)); });
+await p.goto('http://localhost:4173/');
+await p.waitForTimeout(1800);
+await p.screenshot({ path: '/tmp/claude-0/shots/01-login.png' });
+await p.click('[data-testid=demo]');
+await p.waitForTimeout(2500);
+await p.screenshot({ path: '/tmp/claude-0/shots/02-map.png' });
+await p.click('[data-testid=next-door]');
+await p.waitForTimeout(800);
+await p.screenshot({ path: '/tmp/claude-0/shots/03-door.png' });
+console.log(errs.filter(e=>!/openfreemap|fonts.g|ERR_|Failed to load/.test(e)).join('\n'));
+await b.close();

@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+p.on('pageerror', (e) => console.log('pageerror', e.message));
+await p.goto('http://localhost:4173/');
+await p.waitForTimeout(1200);
+await p.click('[data-testid=demo]');
+await p.waitForTimeout(3000);
+console.log(await p.evaluate(() => { const m = window.__nokkMap; const s = m.getSource('streets'); const d = s._data; return JSON.stringify({ n: d.features?.length, first: d.features?.[0]?.properties, coords: d.features?.[0]?.geometry.coordinates.length, rendered: m.queryRenderedFeatures({layers:['street-state']}).length, doors: m.queryRenderedFeatures({layers:['doors']}).length, route: m.queryRenderedFeatures({layers:['route']}).length, vis: m.getLayoutProperty('street-state','visibility'), ls: JSON.stringify(m.getStyle().layers.find(l=>l.id==='street-state')), paint: m.getPaintProperty('street-state','line-color') }).slice(0,800); }));
+await b.close();

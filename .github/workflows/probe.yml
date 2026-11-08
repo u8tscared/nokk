@@ -1,0 +1,9 @@
+name: pages-probe
+on: { push: { branches: [ci/pages-probe] } }
+permissions: { pages: write, id-token: write, contents: read }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v5
+        with: { enablement: true }
