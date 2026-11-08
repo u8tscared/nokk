@@ -1,0 +1,37 @@
+[
+ {
+  "town": "Rezé",
+  "lat": 47.182,
+  "lon": -1.549,
+  "radius": 420,
+  "score": 885
+ },
+ {
+  "town": "Villeurbanne",
+  "lat": 45.7719,
+  "lon": 4.8902,
+  "radius": 420,
+  "score": 810
+ },
+ {
+  "town": "Bron",
+  "lat": 45.7386,
+  "lon": 4.9128,
+  "radius": 420,
+  "score": 784
+ },
+ {
+  "town": "Caluire-et-Cuire",
+  "lat": 45.7953,
+  "lon": 4.8467,
+  "radius": 420,
+  "score": 540
+ },
+ {
+  "town": "Pessac",
+  "lat": 44.8067,
+  "lon": -0.6311,
+  "radius": 420,
+  "score": 419
+ }
+]
