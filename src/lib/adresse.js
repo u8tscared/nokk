@@ -17,7 +17,7 @@ export async function searchAddress(q, { near, signal } = {}) {
     const p = f.properties || {};
     const kind = p.type || 'housenumber';
     const label = kind === 'municipality' ? p.city || p.label : p.name || p.label;
-    const sub = [p.postcode, kind === 'municipality' ? p.context : p.city].filter(Boolean).join(' ');
+    const sub = [p.postcode, kind === 'municipality' ? String(p.context || '').split(', ')[1] : p.city].filter(Boolean).join(' ');
     return { label, sub, p: f.geometry.coordinates, kind };
   });
 }
