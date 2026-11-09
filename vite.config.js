@@ -36,6 +36,9 @@ export default defineConfig({
         // Version de cache changée à chaque mise en ligne.
         cacheId: 'nokk-' + version,
         cleanupOutdatedCaches: true,
+        // La nouvelle version prend la main tout de suite (sinon elle reste « en attente » tant que l'app est ouverte).
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',

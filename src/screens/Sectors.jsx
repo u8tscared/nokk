@@ -152,7 +152,7 @@ function AddDoor({ s, close }) {
 export function SectorsScreen() {
   const d = data.value;
   const t = totals(d.visits);
-  const canCreate = role.value !== 'pompier' || d.sectors.length === 0;
+  const canCreate = true; // tout le monde peut tracer un secteur (les pompiers aussi)
   return (
     <div class="page rise">
       <div class="page-head">
