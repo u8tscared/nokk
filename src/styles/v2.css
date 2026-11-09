@@ -370,3 +370,44 @@ button.link.center { align-self: center; }
 .auto-sectors .chip { flex: none; background: var(--paper); box-shadow: var(--sh); }
 .auto-sectors .chip[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
 .update-card { display: flex; align-items: center; gap: 12px; }
+
+/* Porte : saisie du nom au clavier — on ne garde que l'essentiel, juste au-dessus du clavier */
+.door.naming .nm-hide, .door.naming .door-meta, .door.naming .stop-kicker .away { display: none !important; }
+.door.naming .stop-head h2 { font-size: 20px; }
+.door.naming .stage { gap: 10px; }
+.give-summary { align-self: flex-start; border: 0; background: var(--tint); color: var(--accent-ink); font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 12px; }
+.give-summary b { font-family: var(--d); font-size: 16px; }
+.name-suggest { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-top: -4px; }
+.name-suggest::-webkit-scrollbar { display: none; }
+.name-suggest .chip { flex: none; }
+.sheet { transition: bottom 0.22s var(--ease), max-height 0.22s var(--ease); }
+.sheet.dragging { transition: none; }
+
+/* Tournée : lancement, en cours, bilan */
+.tour-start { display: flex; align-items: center; gap: 10px; width: 100%; border: 1.5px dashed var(--rim-2); background: none; color: var(--ink); border-radius: 16px; padding: 9px 12px; font: inherit; font-size: 14px; text-align: left; margin-bottom: 4px; }
+.tour-start .tour-dot { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tint); color: var(--accent); flex: none; }
+.tour-live { background: var(--ink); color: var(--on-ink); border-radius: 18px; padding: 10px 12px 12px; margin-bottom: 4px; animation: rise 0.4s var(--ease) both; }
+.tour-live-top { display: flex; align-items: center; gap: 8px; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-2) 60%, transparent); animation: livepulse 1.6s ease-out infinite; }
+@keyframes livepulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.tour-chrono { font-family: var(--d); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+.tour-end { border: 0; background: color-mix(in srgb, var(--on-ink) 14%, transparent); color: var(--on-ink); font: inherit; font-weight: 650; font-size: 13px; padding: 7px 12px; border-radius: 11px; }
+.tour-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.tour-kpis > div { display: flex; flex-direction: column; min-width: 0; }
+.tour-kpis .k { font-family: var(--d); font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tour-kpis span { font-size: 11px; opacity: 0.72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.report { display: flex; flex-direction: column; gap: 14px; }
+.report-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.report-grid .stat { background: var(--paper-2, var(--tint)); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; }
+.report-grid .stat b { font-family: var(--d); font-size: 22px; font-weight: 760; letter-spacing: -0.02em; }
+.report-grid .stat span { font-size: 12px; color: var(--muted); }
+.report-hours { display: flex; align-items: flex-end; gap: 6px; height: 96px; padding: 0 2px; }
+.report-hours .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.report-hours i { display: block; width: 100%; max-width: 36px; border-radius: 6px 6px 3px 3px; background: var(--accent); animation: grow 0.6s var(--ease) both; transform-origin: bottom; }
+@keyframes grow { from { transform: scaleY(0); } }
+.report-hours span { font-size: 11px; color: var(--muted); }
+.report-lines { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.report-lines span { display: inline-flex; align-items: center; gap: 6px; }
+.tour-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; padding: 8px 0; border-top: 1px solid var(--rim); }
+.tour-row .right { display: flex; flex-direction: column; align-items: flex-end; }
+@media (prefers-reduced-motion: reduce) { .live-dot, .report-hours i, .tour-live { animation: none; } }

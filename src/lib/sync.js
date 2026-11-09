@@ -8,7 +8,7 @@ import { signal, effect } from '@preact/signals';
 import { data, demo, online, setData } from './store.js';
 import { api } from './api.js';
 
-export const KINDS = ['members', 'sectors', 'doors', 'visits', 'handovers', 'stock'];
+export const KINDS = ['members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions'];
 const PKEY = 'nokk:pending:v1';
 const CKEY = 'nokk:sync:v1';
 const BATCH = 300;

@@ -11,7 +11,10 @@ import { inputKinds } from '../lib/keyboard.js';
 
 const euro = (c) => formatEuro(c);
 
+import { ToursCard } from './Tour.jsx';
+
 // ——— Caisse ———
+
 export function CaisseScreen() {
   const d = data.value;
   const m = me.value;
@@ -205,6 +208,7 @@ export function ComptesScreen() {
         <div><h1>Comptes</h1><div class="sub">Tout est recalculé à partir du journal des passages</div></div>
         <Button kind="small soft" icon="download" onClick={() => go('exports')}>Exporter</Button>
       </div>
+      <ToursCard />
       <div class="kpis">
         <div class="kpi main"><div class="tiny">Total collecté</div><div class="big-num">{euro(b.all.amount)}</div>{b.vsLastYear != null && <div class="tiny">{b.vsLastYear >= 0 ? '+' : ''}{b.vsLastYear} % vs l'an dernier, mêmes portes</div>}</div>
         <div class="kpi"><div class="tiny muted">Dons</div><div class="big-num">{b.all.count}</div><div class="tiny muted">{b.all.rate} % des portes ouvertes</div></div>

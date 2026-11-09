@@ -65,7 +65,7 @@
     width: 340px; background: var(--paper); border-radius: var(--r); box-shadow: var(--sh-float); border: 1px solid var(--rim); padding: 16px;
   }
   .side-panel .summary { box-shadow: none; border: 0; padding: 0; }
-  .side-panel .summary > :not(.next-btn):not(button) { display: none; }
+  .side-panel .summary > :not(.next-btn):not(button):not(.tour-live) { display: none; }
   .map-top { right: calc(max(14px, var(--safe-r)) + 354px); padding-right: 52px; }
   .map-tools { right: 0; }
 }

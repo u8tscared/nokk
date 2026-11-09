@@ -2,7 +2,7 @@
 // Aucune dépendance : vérification des jetons Firebase par WebCrypto.
 
 const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
-const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock']);
+const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions']);
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const PAGE = 1000;
 const MAX_CHANGES = 500;
@@ -195,7 +195,7 @@ async function sync(env, user, b) {
 async function exportTeam(env, user, teamId) {
   const m = await membership(env, teamId, user.uid);
   const { results } = await env.DB.prepare('SELECT kind, id, data FROM items WHERE team_id = ?1 AND deleted = 0').bind(teamId).all();
-  const out = { app: 'nokk', exportedAt: new Date().toISOString(), team: { id: teamId, name: m.name }, org: null, members: [], sectors: [], doors: [], visits: [], handovers: [], stock: [] };
+  const out = { app: 'nokk', exportedAt: new Date().toISOString(), team: { id: teamId, name: m.name }, org: null, members: [], sectors: [], doors: [], visits: [], handovers: [], stock: [], sessions: [] };
   for (const r of results) {
     const d = JSON.parse(r.data);
     if (r.kind === 'org') out.org = d;

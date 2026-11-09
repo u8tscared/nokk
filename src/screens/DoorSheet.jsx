@@ -61,6 +61,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [chequeNo, setChequeNo] = useState('');
   const [popUnit, setPopUnit] = useState(null);
+  const [naming, setNaming] = useState(false); // le clavier est ouvert sur le nom : on ne garde que l'essentiel
   const [leaving, setLeaving] = useState(null); // immeuble qu'on vient de quitter (pour le titre du choix)
   const bodyRef = useRef();
   const nameRef = useRef();
@@ -193,9 +194,20 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const lastYear = door.lastYear?.amount;
   const next = doorAfter(doorId);
   const usual = Math.round(suggested / 500) * 500;
+  // Noms déjà vus à cette porte (et l'an dernier) : un toucher suffit.
+  const known = [...new Set([...list.filter((v) => !unit || v.unit === unit.trim()).map((v) => v.name), door.lastYear?.name].filter((x) => x && x.trim()))].slice(-3).reverse();
+  const nameProps = {
+    onFocus: () => setNaming(true),
+    onBlur: () => setTimeout(() => { const a = document.activeElement; if (!a || !/^(aname|dname)$/.test(a.id)) setNaming(false); }, 120),
+  };
+  const suggest = naming && known.length > 0 && !known.includes(name.trim()) && (
+    <div class="name-suggest" data-testid="name-suggest">
+      {known.map((n) => <button key={n} type="button" class="chip" onPointerDown={(e) => e.preventDefault()} onClick={() => { feel('tick'); setName(n); }}>{n}</button>)}
+    </div>
+  );
 
   return (
-    <div class="door" ref={bodyRef}>
+    <div class={'door' + (naming ? ' naming' : '')} ref={bodyRef}>
       {step !== 'pick' && (
         <div class={'stop-head anim-' + motion} key={'h' + doorId}>
           <span class={'stop-kind' + (isBuilding ? ' building' : '')}><Icon name={isBuilding ? 'building' : 'door'} /></span>
@@ -215,23 +227,24 @@ export function DoorSheet({ doorId: initialId, close, start }) {
       )}
 
       {step !== 'pick' && (door.code || door.notes) && (
-        <div class="stop-notes">
+        <div class="stop-notes nm-hide">
           {door.code && <span class="code-chip"><Icon name="key" size={16} /> {door.code}</span>}
           {door.notes && <span class="note-line"><Icon name="note" size={16} /> {door.notes}</span>}
         </div>
       )}
 
-      {step !== 'pick' && isBuilding && (
+      {step !== 'pick' && isBuilding && !naming && (
         <BuildingBar door={door} st={st} units={units} unit={unit} setUnit={setUnit} pop={popUnit} />
       )}
 
       {step === 'ask' && (
         <div class={'stage anim-' + motion} key={'ask' + doorId + units.length}>
-          {!isBuilding && list.length > 0 && <History list={list} st={st} />}
+          {!isBuilding && list.length > 0 && !naming && <History list={list} st={st} />}
           <div class="ask-name">
             <label for="aname"><Icon name="user" size={18} /></label>
-            <input id="aname" class="input" placeholder={isBuilding ? 'Nom sur l\'interphone (facultatif)' : 'Nom sur la boîte (facultatif)'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} enterKeyHint="done" data-testid="ask-name" />
+            <input id="aname" class="input" placeholder={isBuilding ? 'Nom sur l\'interphone (facultatif)' : 'Nom sur la boîte (facultatif)'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint="done" data-testid="ask-name" />
           </div>
+          {suggest}
           <div class="ask-label">{isBuilding ? <>Logement <b>{unit || 'suivant'}</b> : ils donnent ?</> : 'Ils donnent ?'}</div>
           <button class="yes-btn" data-autofocus onClick={() => { feel('tap'); go('give'); }} data-testid="yes">
             <span class="yes-ico"><Icon name="check" /></span>
@@ -244,12 +257,12 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             <button class="outcome tone-muted" onClick={() => record('deja')}><Icon name="deja" />Déjà pris</button>
           </div>
           {isBuilding ? (
-            <div class="building-actions">
+            <div class="building-actions nm-hide">
               <Button kind="soft full" icon="swap" onClick={leaveBuilding} data-testid="leave-building">Changer de bâtiment</Button>
               <button class="link-btn" onClick={closeBuilding} data-testid="close-building"><Icon name="flag" size={18} /> Immeuble fini</button>
             </div>
           ) : (
-            <div class="door-tools3">
+            <div class="door-tools3 nm-hide">
               <button class="link-btn" onClick={() => { feel('tap'); updateDoor(door.id, { flats: 2 }); setUnit(String(list.filter((v) => !v.closed).length + 1)); toast('Deux foyers ici : saisissez-les l\'un après l\'autre'); }} data-testid="two-homes"><Icon name="plus" size={18} /> 2 sonnettes</button>
               <button class="link-btn" onClick={() => { feel('tap'); setLeaving(null); go('pick'); }} data-testid="pick-other"><Icon name="swap" size={18} /> Autre porte</button>
               <button class="link-btn" onClick={() => editDoor(door)}><Icon name="pencil" size={18} /> Modifier</button>
@@ -260,15 +273,20 @@ export function DoorSheet({ doorId: initialId, close, start }) {
 
       {step === 'give' && (
         <div class={'stage anim-' + motion} key={'give' + doorId}>
-          <div class="give-top">
+          {naming && (
+            <button type="button" class="give-summary" onPointerDown={(e) => e.preventDefault()} onClick={() => document.activeElement?.blur()}>
+              <b>{formatEuro(amount)}</b> · {METHODS[method].label} · {cals} calendrier{cals > 1 ? 's' : ''}
+            </button>
+          )}
+          <div class="give-top nm-hide">
             <button class="link-btn back-link" onClick={() => go('ask', 'back')}><Icon name="chevL" size={18} /> Retour</button>
             <span class="tiny muted">{isBuilding && unit ? 'Logement ' + unit : 'Montant du don'}</span>
           </div>
-          <button class={'amount-display' + (keypad ? ' typing' : '')} onClick={() => { feel('tick'); setKeypad(!keypad); setTyped(''); }} aria-label={`Montant ${formatEuro(amount)}, toucher pour saisir un autre montant`}>
+          <button class={'amount-display nm-hide' + (keypad ? ' typing' : '')} onClick={() => { feel('tick'); setKeypad(!keypad); setTyped(''); }} aria-label={`Montant ${formatEuro(amount)}, toucher pour saisir un autre montant`}>
             <Bump value={amount} class="big-num">{formatEuro(amount)}</Bump>
             {keypad && <span class="caret" />}
           </button>
-          {keypad ? (
+          {naming ? null : keypad ? (
             <>
               <NumPad onKey={onKey} />
               <button class="link-btn center" onClick={() => { setKeypad(false); setTyped(''); }}>Montants rapides</button>
@@ -285,7 +303,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             </div>
           )}
 
-          <Seg
+          {!naming && <Seg
             label="Moyen de paiement"
             value={method}
             onChange={(m) => { setMethod(m); if (m === 'cheque') setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 80); }}
@@ -294,19 +312,20 @@ export function DoorSheet({ doorId: initialId, close, start }) {
               { value: 'carte', label: 'Carte', icon: 'card' },
               { value: 'cheque', label: 'Chèque', icon: 'cheque' },
             ]}
-          />
-          {method === 'carte' && <p class="tiny muted">Paiement sur votre terminal. Le lien direct avec SumUp arrive bientôt.</p>}
+          />}
+          {method === 'carte' && !naming && <p class="tiny muted">Paiement sur votre terminal. Le lien direct avec SumUp arrive bientôt.</p>}
 
           <Field id="dname" label={method === 'cheque' ? 'Nom sur le chèque' : 'Nom (facultatif)'}>
-            <input id="dname" ref={nameRef} class="input" placeholder="Ex. Mme Dupont" value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} enterKeyHint={method === 'cheque' ? 'next' : 'done'} />
+            <input id="dname" ref={nameRef} class="input" placeholder="Ex. Mme Dupont" value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint={method === 'cheque' ? 'next' : 'done'} />
           </Field>
+          {suggest}
           {method === 'cheque' && (
             <Field id="cheque" label="N° de chèque (facultatif)">
               <input id="cheque" class="input" value={chequeNo} onInput={(e) => setChequeNo(e.currentTarget.value)} {...inputKinds.int} />
             </Field>
           )}
 
-          <div class="hrow between cal-row">
+          <div class="hrow between cal-row nm-hide">
             <span class="hrow"><Icon name="calendar" /> Calendriers</span>
             <div class="mini-step">
               <IconButton icon="minus" label="Un calendrier de moins" class="flat" onClick={() => setCals(Math.max(0, cals - 1))} />
@@ -315,7 +334,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             </div>
           </div>
 
-          {!noteOpen ? (
+          {naming ? null : !noteOpen ? (
             <button class="link-btn" onClick={() => setNoteOpen(true)} data-testid="add-note"><Icon name="note" size={18} /> Ajouter une note</button>
           ) : (
             <Field id="dnote" label="Note pour la prochaine fois">

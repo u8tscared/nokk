@@ -12,6 +12,8 @@ import { openDoor } from './DoorSheet.jsx';
 import { openSheet, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { DrawBar } from './SectorNew.jsx';
+import { TourBar } from './Tour.jsx';
+import { activeSession } from '../lib/sessions.js';
 
 export function locate() {
   if (geoState.value === 'on' && position.value) {
@@ -74,7 +76,8 @@ function Summary({ wide }) {
   const left = r?.order.length || 0;
   return (
     <div class="summary" data-testid="summary">
-      <div class="hrow between">
+      <TourBar />
+      <div class="hrow between" hidden={!!activeSession.value}>
         <div>
           <div class="tiny muted">Ce soir</div>
           <Bump value={t.amount} class="big-num sum-amount">{formatEuro(t.amount)}</Bump>
@@ -222,7 +225,7 @@ export function MapScreen({ visible }) {
           <div class="tour-wrap"><TourCard /></div>
           {sector ? (
             <>
-              {guide.value ? <div class="map-bottom guide-wrap"><GuideCard /></div> : <div class="map-bottom"><Summary /></div>}
+              {guide.value ? <div class="map-bottom guide-wrap">{activeSession.value && <TourBar />}<GuideCard /></div> : <div class="map-bottom"><Summary /></div>}
               <SidePanel />
             </>
           ) : (
