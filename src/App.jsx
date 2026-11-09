@@ -11,6 +11,7 @@ import { TeamScreen } from './screens/Team.jsx';
 import { SettingsScreen, FormationScreen, MoreScreen } from './screens/Settings.jsx';
 import { Login, Onboarding, WhoAmI, SaveGate } from './screens/Welcome.jsx';
 import { TeamChoice, AccountBusy, AccountFailed } from './screens/Account.jsx';
+import { AdminScreen, canAdmin } from './screens/Admin.jsx';
 import { account, accountStep, firstLoad } from './lib/account.js';
 import { authUser } from './lib/auth.js';
 import { exitDemo } from './lib/store.js';
@@ -26,6 +27,7 @@ const PAGES = {
   reglages: SettingsScreen,
   formation: FormationScreen,
   plus: MoreScreen,
+  admin: AdminScreen,
 };
 
 function TabBar({ current }) {
@@ -66,6 +68,9 @@ function Sidebar({ current }) {
           ))}
         </div>
       ))}
+      {canAdmin.value && (
+        <div><h4>Nokk</h4><button class="side-link" aria-current={current === 'admin' ? 'page' : undefined} onClick={() => { feel('tap'); go('admin'); }} data-testid="side-admin"><Icon name="chart" /> Admin</button></div>
+      )}
       <div class="side-foot">
         {demo.value && <Button kind="soft small full" onClick={() => { exitDemo(); go('carte', { replace: true }); toast('Démo terminée'); }}>Quitter la démo</Button>}
         {m && (
@@ -114,7 +119,7 @@ export function App() {
   let r = route.value;
 
   // Droits : un écran retiré est bloqué à l'entrée, même par lien direct.
-  const ok = r === 'carte' || r === 'plus' || allowed(r, m, settings.value.simple);
+  const ok = r === 'carte' || r === 'plus' || (r === 'admin' && canAdmin.value) || allowed(r, m, settings.value.simple);
   useEffect(() => {
     if (r === 'saisir') { go('carte', { replace: true }); setTimeout(quickLog, 300); }
     else if (!ok) go('carte', { replace: true });

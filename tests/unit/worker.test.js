@@ -16,9 +16,9 @@ async function token(uid, extra = {}) {
 }
 
 let env;
-async function call(uid, method, path, body, origin = 'https://u8tscared.github.io') {
+async function call(uid, method, path, body, origin = 'https://u8tscared.github.io', claims = {}) {
   const headers = { origin, 'content-type': 'application/json' };
-  if (uid) headers.authorization = 'Bearer ' + (await token(uid));
+  if (uid) headers.authorization = 'Bearer ' + (await token(uid, claims));
   const res = await worker.fetch(new Request('https://api.test' + path, { method, headers, body: body ? JSON.stringify(body) : undefined }), env);
   return { status: res.status, body: res.status === 204 ? null : await res.json(), headers: res.headers };
 }
@@ -97,6 +97,45 @@ describe('API Nokk', () => {
     expect(ex.org.name).toBe('Amicale');
     expect(ex.visits.map((v) => v.id)).toEqual(['v1']);
     expect(ex.visits[0].amount).toBe(2000);
+  });
+
+  it('espace admin : réservé au compte Google de Marceau, chiffres par équipe, par compte et par pompier', async () => {
+    const admin = (method, path, b) => call('boss', method, path, b, undefined, { email: 'Marceau.Ruis@gmail.com', email_verified: true, firebase: { sign_in_provider: 'google.com' } });
+    const t = (await call('chef1', 'POST', '/teams', { name: 'Caluire' })).body;
+    await call('pomp1', 'POST', '/teams/join', { code: t.code });
+    const now = Date.now();
+    await call('chef1', 'POST', '/sync', { teamId: t.id, since: 0, changes: [
+      { k: 'members', i: 'm1', d: { id: 'm1', name: 'Paul', role: 'chef' }, u: now },
+      { k: 'members', i: 'm2', d: { id: 'm2', name: 'Léa', role: 'pompier' }, u: now },
+      { k: 'sectors', i: 's1', d: { id: 's1', name: 'Nord' }, u: now },
+      { k: 'visits', i: 'w1', d: { id: 'w1', sectorId: 's1', ts: now, by: ['m1', 'm2'], result: 'donne', amount: 1000, calendars: 2 }, u: now },
+      { k: 'visits', i: 'w2', d: { id: 'w2', sectorId: 's1', ts: now, by: ['m2'], result: 'refus' }, u: now },
+      { k: 'sessions', i: 't1', d: { id: 't1', startedAt: now - 36e5, endedAt: now, crew: ['m1', 'm2'] }, u: now },
+    ] });
+    await call('pomp1', 'POST', `/teams/${t.id}/link`, { memberId: 'm2' });
+    await call('pomp1', 'GET', '/me');
+
+    expect((await call('chef1', 'GET', '/admin')).status).toBe(403);
+    // Même e-mail mais non vérifié (compte e-mail + mot de passe) : refusé.
+    expect((await call('x', 'GET', '/admin', undefined, undefined, { email: 'marceau.ruis@gmail.com', email_verified: false, firebase: { sign_in_provider: 'password' } })).status).toBe(403);
+    expect((await admin('GET', '/me')).body.admin).toBe(true);
+    expect((await call('chef1', 'GET', '/me')).body.admin).toBe(false);
+
+    const o = (await admin('GET', '/admin')).body;
+    const team = o.teams.find((x) => x.id === t.id);
+    expect(team).toMatchObject({ name: 'Caluire', accounts: 2, members: 2, sectors: 1, tours: 1, visits: 2, calendars: 2, amount: 1000, owner: 'chef1@ex.fr' });
+    expect(o.accounts.find((a) => a.uid === 'chef1')).toMatchObject({ calendars: 2, teams: [{ name: 'Caluire', role: 'owner' }] });
+    expect(o.totals.calendars).toBeGreaterThanOrEqual(2);
+    expect(o.days.length).toBeGreaterThan(0);
+
+    const d = (await admin('GET', `/admin/teams/${t.id}`)).body;
+    expect(d.members.find((m) => m.id === 'm2')).toMatchObject({ name: 'Léa', visits: 2, calendars: 2, amount: 1000, tours: 1, minutes: 60, email: 'pomp1@ex.fr' });
+    expect(d.sectors[0]).toMatchObject({ name: 'Nord', visits: 2, calendars: 2 });
+
+    expect((await admin('POST', `/admin/teams/${t.id}/member`, { uid: 'pomp1', action: 'role', role: 'owner' })).body.role).toBe('owner');
+    expect((await admin('POST', `/admin/teams/${t.id}/member`, { uid: 'pomp1', action: 'remove' })).body.removed).toBe(true);
+    expect((await call('pomp1', 'POST', '/sync', { teamId: t.id, since: 0 })).status).toBe(403);
+    expect((await call('chef1', 'POST', `/admin/teams/${t.id}/member`, { uid: 'chef1', action: 'remove' })).status).toBe(403);
   });
 
   it('rejette les données invalides', async () => {

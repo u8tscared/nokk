@@ -11,6 +11,7 @@ import { applyTheme } from '../lib/theme.js';
 import { installHelp, canInstall, promptInstall } from '../lib/install.jsx';
 import { askSwitch } from './Team.jsx';
 import { AccountCard } from './Account.jsx';
+import { AdminEntry } from './Admin.jsx';
 import { account } from '../lib/account.js';
 import { formatEuro } from '../lib/model.js';
 import { versionLabel, updateState, checkUpdate } from '../lib/update.js';
@@ -33,6 +34,7 @@ export function SettingsScreen() {
   return (
     <div class="page rise">
       <div class="page-head"><div><h1>Réglages</h1><div class="sub">Sur cet appareil</div></div></div>
+      {!demo.value && <AdminEntry />}
       {!demo.value && <AccountCard />}
       <div class="card tight list">
         <Toggle id="snd" label="Son" sub="Petits sons discrets à chaque geste" icon="sound" checked={s.sound} onChange={(v) => saveSettings({ sound: v })} />
@@ -148,6 +150,7 @@ export function MoreScreen() {
           {d.members.length > 1 && <span class="link-btn" onClick={(e) => { e.stopPropagation(); openSheet(({ close }) => <SwitchUser close={close} />, { label: 'Changer de profil' }); }}>Changer</span>}
         </button>
       )}
+      {!demo.value && <AdminEntry />}
       <div class="card tight list">
         {items.map((it) => (
           <button class="row" key={it.route} onClick={() => go(it.route)} data-testid={'more-' + it.route}>

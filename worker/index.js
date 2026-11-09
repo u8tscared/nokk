@@ -68,7 +68,7 @@ export async function verifyToken(token, env, now = Date.now()) {
   if (typeof p.exp !== 'number' || p.exp < t - 30) throw new HttpError(401, 'expired');
   if (typeof p.iat !== 'number' || p.iat > t + 300) throw new HttpError(401, 'bad_token');
   if (!p.sub || typeof p.sub !== 'string') throw new HttpError(401, 'bad_token');
-  return { uid: p.sub, email: p.email || null, name: p.name || null };
+  return { uid: p.sub, email: p.email || null, name: p.name || null, verified: p.email_verified === true || p.firebase?.sign_in_provider === 'google.com' };
 }
 
 // ——— Aides ———
@@ -101,7 +101,7 @@ async function me(env, user) {
   await env.DB.prepare('INSERT INTO accounts (uid, email, name, created_at, seen_at) VALUES (?1, ?2, ?3, ?4, ?4) ON CONFLICT(uid) DO UPDATE SET email = excluded.email, name = COALESCE(excluded.name, accounts.name), seen_at = excluded.seen_at')
     .bind(user.uid, user.email, user.name, now).run();
   const { results } = await env.DB.prepare('SELECT t.id, t.name, t.code, t.created_at, m.role, m.member_id FROM memberships m JOIN teams t ON t.id = m.team_id WHERE m.uid = ?1 ORDER BY m.joined_at DESC').bind(user.uid).all();
-  return { uid: user.uid, email: user.email, name: user.name, teams: results.map(teamOut) };
+  return { uid: user.uid, email: user.email, name: user.name, admin: isAdmin(user, env), teams: results.map(teamOut) };
 }
 
 async function createTeam(env, user, b) {
@@ -204,6 +204,103 @@ async function exportTeam(env, user, teamId) {
   return out;
 }
 
+
+// ——— Espace admin (propriétaire de Nokk) ———
+export function isAdmin(user, env) {
+  const list = String(env.ADMINS || 'marceau.ruis@gmail.com').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+  return !!(user?.email && user.verified && list.includes(user.email.toLowerCase()));
+}
+function needAdmin(user, env) { if (!isAdmin(user, env)) throw new HttpError(403, 'not_admin'); }
+const DAY = 864e5;
+const VISIT_STATS = `COUNT(*) AS visits,
+  SUM(CASE WHEN json_extract(data,'$.result')='donne' THEN COALESCE(json_extract(data,'$.calendars'),1) ELSE 0 END) AS calendars,
+  SUM(CASE WHEN json_extract(data,'$.result')='donne' THEN COALESCE(json_extract(data,'$.amount'),0) ELSE 0 END) AS amount,
+  MAX(json_extract(data,'$.ts')) AS last`;
+
+async function adminOverview(env) {
+  const now = Date.now();
+  const q = (sql, ...a) => env.DB.prepare(sql).bind(...a).all().then((r) => r.results);
+  const [accounts, teams, memberships, byTeam, byUser, counts, days] = await Promise.all([
+    q('SELECT uid, email, name, created_at, seen_at FROM accounts ORDER BY COALESCE(seen_at, created_at) DESC'),
+    q('SELECT id, name, code, owner, created_at FROM teams ORDER BY created_at DESC'),
+    q('SELECT team_id, uid, member_id, role, joined_at FROM memberships'),
+    q(`SELECT team_id, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 GROUP BY team_id`),
+    q(`SELECT "by" AS uid, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 GROUP BY "by"`),
+    q("SELECT team_id, kind, COUNT(*) AS n, MAX(updated_at) AS last FROM items WHERE deleted = 0 AND kind IN ('members','sectors','doors','sessions') GROUP BY team_id, kind"),
+    q(`SELECT CAST(json_extract(data,'$.ts') / ${DAY} AS INTEGER) AS d, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 AND json_extract(data,'$.ts') > ?1 GROUP BY d ORDER BY d`, now - 30 * DAY),
+  ]);
+  const stat = (r) => ({ visits: r?.visits || 0, calendars: r?.calendars || 0, amount: r?.amount || 0, last: r?.last || null });
+  const tStats = new Map(byTeam.map((r) => [r.team_id, stat(r)]));
+  const uStats = new Map(byUser.map((r) => [r.uid, stat(r)]));
+  const email = new Map(accounts.map((a) => [a.uid, a.email]));
+  const tName = new Map(teams.map((t) => [t.id, t.name]));
+  const outTeams = teams.map((t) => {
+    const c = Object.fromEntries(counts.filter((x) => x.team_id === t.id).map((x) => [x.kind, x.n]));
+    const ms = memberships.filter((m) => m.team_id === t.id);
+    return { id: t.id, name: t.name, code: t.code, createdAt: t.created_at, owner: email.get(t.owner) || null,
+      accounts: ms.length, members: c.members || 0, sectors: c.sectors || 0, doors: c.doors || 0, tours: c.sessions || 0, ...tStats.get(t.id) || stat() };
+  });
+  const outAccounts = accounts.map((a) => ({ uid: a.uid, email: a.email, name: a.name, createdAt: a.created_at, seenAt: a.seen_at,
+    teams: memberships.filter((m) => m.uid === a.uid).map((m) => ({ id: m.team_id, name: tName.get(m.team_id) || '?', role: m.role })),
+    ...uStats.get(a.uid) || stat() }));
+  const sum = (k) => outTeams.reduce((n, t) => n + (t[k] || 0), 0);
+  return {
+    at: now,
+    totals: { accounts: accounts.length, teams: teams.length, active7: accounts.filter((a) => a.seen_at > now - 7 * DAY).length,
+      visits: sum('visits'), calendars: sum('calendars'), amount: sum('amount'), doors: sum('doors'), sectors: sum('sectors'), tours: sum('tours'), members: sum('members') },
+    days: days.map((r) => ({ day: r.d * DAY, ...stat(r) })),
+    teams: outTeams, accounts: outAccounts,
+  };
+}
+
+async function adminTeam(env, teamId) {
+  const t = await env.DB.prepare('SELECT id, name, code, owner, created_at FROM teams WHERE id = ?1').bind(teamId).first();
+  if (!t) throw new HttpError(404, 'unknown_team');
+  const { results: ms } = await env.DB.prepare('SELECT m.uid, m.member_id, m.role, m.joined_at, a.email, a.name, a.seen_at FROM memberships m LEFT JOIN accounts a ON a.uid = m.uid WHERE m.team_id = ?1 ORDER BY m.joined_at').bind(teamId).all();
+  const { results: items } = await env.DB.prepare("SELECT kind, data FROM items WHERE team_id = ?1 AND deleted = 0 AND kind IN ('org','members','sectors','visits','sessions')").bind(teamId).all();
+  const of = (k) => items.filter((r) => r.kind === k).map((r) => JSON.parse(r.data));
+  const members = of('members'); const visits = of('visits'); const sectors = of('sectors'); const sessions = of('sessions');
+  const per = new Map();
+  const bump = (id) => { if (!per.has(id)) per.set(id, { visits: 0, calendars: 0, amount: 0, last: null, tours: 0, minutes: 0 }); return per.get(id); };
+  for (const v of visits) for (const id of (Array.isArray(v.by) && v.by.length ? v.by : ['?'])) {
+    const p = bump(id); p.visits++;
+    if (v.result === 'donne') { p.calendars += v.calendars ?? 1; p.amount += v.amount || 0; }
+    if (!p.last || v.ts > p.last) p.last = v.ts;
+  }
+  for (const s of sessions) for (const id of s.crew || []) {
+    const p = bump(id); p.tours++;
+    if (s.endedAt) p.minutes += Math.round((s.endedAt - s.startedAt) / 6e4);
+  }
+  const accountOf = (id) => ms.find((m) => m.member_id === id);
+  const secStats = sectors.map((s) => {
+    const vs = visits.filter((v) => v.sectorId === s.id);
+    return { id: s.id, name: s.name, visits: vs.length, calendars: vs.reduce((n, v) => n + (v.result === 'donne' ? v.calendars ?? 1 : 0), 0), amount: vs.reduce((n, v) => n + (v.result === 'donne' ? v.amount || 0 : 0), 0) };
+  });
+  return {
+    id: t.id, name: t.name, code: t.code, createdAt: t.created_at, org: of('org')[0] || null,
+    accounts: ms.map((m) => ({ uid: m.uid, email: m.email, name: m.name, role: m.role, memberId: m.member_id, joinedAt: m.joined_at, seenAt: m.seen_at })),
+    members: members.map((m) => ({ id: m.id, name: m.name, role: m.role || null, email: accountOf(m.id)?.email || null, ...bump(m.id) })),
+    sectors: secStats,
+    tours: sessions.length,
+  };
+}
+
+async function adminMember(env, teamId, b) {
+  const uid = String(b.uid || '');
+  const m = await env.DB.prepare('SELECT role FROM memberships WHERE team_id = ?1 AND uid = ?2').bind(teamId, uid).first();
+  if (!m) throw new HttpError(404, 'not_member');
+  if (b.action === 'remove') {
+    await env.DB.prepare('DELETE FROM memberships WHERE team_id = ?1 AND uid = ?2').bind(teamId, uid).run();
+    return { ok: true, removed: true };
+  }
+  if (b.action === 'role' && ['owner', 'member'].includes(b.role)) {
+    await env.DB.prepare('UPDATE memberships SET role = ?3 WHERE team_id = ?1 AND uid = ?2').bind(teamId, uid, b.role).run();
+    if (b.role === 'owner') await env.DB.prepare('UPDATE teams SET owner = ?2 WHERE id = ?1').bind(teamId, uid).run();
+    return { ok: true, role: b.role };
+  }
+  throw new HttpError(400, 'bad_action');
+}
+
 // ——— Lecture d'une photo de plan (Workers AI) ———
 // Deux modèles lisent la photo en parallèle ; on croise leurs réponses.
 export const PLAN_MODELS = ['@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/meta/llama-4-scout-17b-16e-instruct'];
@@ -303,6 +400,9 @@ export default {
       else if (path === '/sync' && req.method === 'POST') out = await sync(env, user, await body(req));
       else if ((m = /^\/teams\/([\w-]+)\/link$/.exec(path)) && req.method === 'POST') out = await link(env, user, m[1], await body(req));
       else if ((m = /^\/teams\/([\w-]+)\/export$/.exec(path)) && req.method === 'GET') out = await exportTeam(env, user, m[1]);
+      else if (path === '/admin' && req.method === 'GET') { needAdmin(user, env); out = await adminOverview(env); }
+      else if ((m = /^\/admin\/teams\/([\w-]+)$/.exec(path)) && req.method === 'GET') { needAdmin(user, env); out = await adminTeam(env, m[1]); }
+      else if ((m = /^\/admin\/teams\/([\w-]+)\/member$/.exec(path)) && req.method === 'POST') { needAdmin(user, env); out = await adminMember(env, m[1], await body(req)); }
       else throw new HttpError(404, 'not_found');
       return json(out, 200, h);
     } catch (e) {

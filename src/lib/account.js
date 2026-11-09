@@ -53,7 +53,7 @@ async function afterSignIn(u) {
   accountError.value = null;
   try {
     const me = await api('/me');
-    const base = { uid: u.uid, email: u.email || me.email, name: u.name || me.name };
+    const base = { uid: u.uid, email: u.email || me.email, name: u.name || me.name, admin: !!me.admin };
     const code = pendingJoin();
     if (code) {
       const t = await api('/teams/join', { method: 'POST', body: { code } }).catch(() => null);

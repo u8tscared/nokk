@@ -411,3 +411,45 @@ button.link.center { align-self: center; }
 .tour-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; padding: 8px 0; border-top: 1px solid var(--rim); }
 .tour-row .right { display: flex; flex-direction: column; align-items: flex-end; }
 @media (prefers-reduced-motion: reduce) { .live-dot, .report-hours i, .tour-live { animation: none; } }
+
+/* ——— Espace admin ——— */
+.admin .seg { margin-bottom: 4px; }
+.admin-search { position: relative; }
+.admin-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+.admin-search .input { padding-left: 42px; }
+.admin-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 2px; border-bottom: 1px solid var(--rim); background: none; color: inherit; font: inherit; cursor: pointer; }
+.admin-row:last-child { border-bottom: 0; }
+.admin-row .grow { min-width: 0; }
+.admin-row .grow b { overflow-wrap: anywhere; }
+.admin-row .right { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
+.admin-row .chev { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.admin-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rim-2); flex: none; }
+.admin-dot.live { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 18%, transparent); }
+button.kpi { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.admin-spark { display: flex; align-items: flex-end; gap: 3px; height: 96px; margin: 14px 0 6px; }
+.admin-spark span { flex: 1; border-radius: 3px 3px 1px 1px; background: var(--rim-2); min-width: 0; }
+.admin-spark span.on { background: var(--accent); }
+.admin-spark span:last-child.on { background: var(--accent-2); }
+.admin-sheet { padding-bottom: 8px; }
+.admin-sheet .kpis { grid-template-columns: 1fr 1fr; }
+.admin-sheet .kpi .big-num { font-size: 22px; }
+.admin-member { padding: 8px 0; border-bottom: 1px solid var(--rim); display: flex; flex-direction: column; gap: 5px; }
+.admin-member:last-child { border-bottom: 0; }
+.admin-num { font-variant-numeric: tabular-nums; font-size: 17px; }
+.admin-meter { height: 6px; border-radius: 99px; background: var(--rim); overflow: hidden; }
+.admin-meter span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.admin-acc { padding: 10px 0; border-bottom: 1px solid var(--rim); display: flex; flex-direction: column; gap: 6px; }
+.admin-acc:last-child { border-bottom: 0; }
+.admin-acc b { overflow-wrap: anywhere; }
+.admin-tag { display: inline-block; font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 99px; background: var(--rim); color: var(--ink-2); vertical-align: 1px; }
+.admin-tag.own { background: var(--tint); color: var(--accent-ink); }
+.admin-actions { gap: 18px; }
+.link-btn.danger { color: var(--bad); }
+.admin-confirm { gap: 8px; flex-wrap: wrap; background: var(--well); border-radius: 12px; padding: 10px; }
+.admin-entry { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.admin-entry .chev { width: 18px; height: 18px; color: var(--muted); }
+.admin-skel { display: flex; flex-direction: column; gap: 10px; }
+.admin-skel span { height: 18px; border-radius: 8px; background: linear-gradient(90deg, var(--rim) 25%, var(--rim-2) 50%, var(--rim) 75%); background-size: 200% 100%; animation: admin-shim 1.2s linear infinite; }
+.admin-skel span:nth-child(2) { width: 70%; } .admin-skel span:nth-child(3) { width: 45%; }
+@keyframes admin-shim { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .admin-skel span { animation: none; } }
