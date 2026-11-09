@@ -6,7 +6,8 @@ test('clavier : le champ et le bouton restent visibles au-dessus du clavier', as
   test.skip(isDesktop(page), 'pas de clavier virtuel sur ordinateur');
   await startDemo(page);
   await page.locator('[data-testid=next-door]:visible').click();
-  await page.getByRole('button', { name: 'Nom, appartement, note' }).click();
+  await page.getByTestId('yes').click();
+  await page.getByTestId('add-note').click();
   const field = page.locator('#dnote');
   await field.focus();
   const { width, height } = page.viewportSize();
@@ -39,8 +40,8 @@ test('clavier : faux positifs évités (pas de champ, pas de clavier)', async ({
 test('le bon clavier sur chaque champ', async ({ page }) => {
   await startDemo(page);
   await page.locator('[data-testid=next-door]:visible').click();
+  await page.getByTestId('yes').click();
   await page.getByRole('button', { name: 'Chèque' }).click();
-  await page.getByRole('button', { name: 'Nom, appartement, note' }).click();
   await expect(page.locator('#dname')).toHaveAttribute('autocapitalize', 'words');
   await expect(page.locator('#dname')).toHaveAttribute('autocorrect', 'off');
   await expect(page.locator('#cheque')).toHaveAttribute('inputmode', 'numeric');

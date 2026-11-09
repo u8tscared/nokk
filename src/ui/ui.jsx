@@ -151,7 +151,8 @@ let tid = 0;
 export function toast(text, { undo, error, duration } = {}) {
   const id = ++tid;
   const t = { id, text, undo, error, out: false };
-  toasts.value = [...toasts.value.slice(-2), t];
+  toasts.value = [...toasts.value.filter((x) => !x.out).slice(-1).map((x) => ({ ...x, out: true })), t];
+  setTimeout(() => { toasts.value = toasts.value.filter((x) => x.id === id || !x.out); }, 260);
   if (error) feel('err');
   const ms = duration || (error ? 3800 : undo ? 4200 : 2300);
   setTimeout(() => dismissToast(id), ms);
@@ -256,7 +257,7 @@ function SheetView({ s, top, index }) {
     const el = ref.current;
     const rect = el.getBoundingClientRect();
     if (e.clientY - rect.top > 72 && !e.target.closest('.sheet-grip')) return;
-    if (e.target.closest('button, input, select, textarea, a')) return;
+    if (e.target.closest('button, input, select, textarea, a, label, .maplibregl-map')) return;
     drag.current = { y: e.clientY, t: performance.now(), h: rect.height, dy: 0 };
     el.classList.add('dragging');
     el.setPointerCapture?.(e.pointerId);

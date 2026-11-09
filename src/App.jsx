@@ -6,7 +6,7 @@ import { route, go, menuFor, tabsFor, allowed, MENU, sheets } from './lib/nav.js
 import { feel } from './lib/feedback.js';
 import { MapScreen, quickLog } from './screens/MapScreen.jsx';
 import { SectorsScreen } from './screens/Sectors.jsx';
-import { CaisseScreen, ComptesScreen, JournalScreen, ExportsScreen } from './screens/Money.jsx';
+import { CaisseScreen, ComptesScreen, JournalScreen, ExportsScreen, PageStatus } from './screens/Money.jsx';
 import { TeamScreen } from './screens/Team.jsx';
 import { SettingsScreen, FormationScreen, MoreScreen } from './screens/Settings.jsx';
 import { Login, Onboarding, WhoAmI } from './screens/Welcome.jsx';
@@ -77,9 +77,8 @@ function Capsules() {
   const off = !online.value;
   return (
     <>
-      {off && <div class={'capsule' + (route.value === 'carte' ? ' on-map' : '')} role="status"><i /> Hors ligne · tout est gardé</div>}
+      {off && route.value === 'carte' && <div class="capsule on-map" role="status"><i /> Hors ligne · tout est gardé</div>}
       {saveError.value && <button class="capsule demo" style={{ pointerEvents: 'auto' }} onClick={() => go('exports')}><i /> Mémoire du téléphone pleine · exportez une sauvegarde</button>}
-      {demo.value && route.value !== 'carte' && <div class="capsule demo" role="status"><i /> Mode démo</div>}
     </>
   );
 }
@@ -119,6 +118,7 @@ export function App() {
           <MapScreen visible={r === 'carte'} />
           {Page && (
             <div class="page-scroll" key={r} data-testid={'screen-' + r}>
+              {(!online.value || demo.value) && <div class="page status-holder"><PageStatus /></div>}
               <Page />
             </div>
           )}

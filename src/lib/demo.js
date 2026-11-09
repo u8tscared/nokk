@@ -108,15 +108,20 @@ export async function buildDemo(now = Date.now()) {
       photos: [],
       source: 'osm',
     });
+    const bigNames = new Set(area.streets.filter((x) => x.big).map((x) => x.name));
     for (const d of g) {
       const r = rand();
+      // Quelques immeubles, surtout sur les grandes rues.
+      const rb = rand();
+      const flats = rb < (bigNames.has(d.street) ? 0.22 : 0.06) ? [6, 8, 9, 12, 12, 16, 20, 24][Math.floor(rand() * 8)] : d.flats || 1;
       doors.push({
         ...d,
+        flats,
         id: id + '-' + d.id,
         sectorId: id,
         lastYear: r < 0.62 ? { amount: [500, 1000, 1000, 1000, 1500, 1500, 2000, 2000, 3000][Math.floor(rand() * 9)] } : null,
         notes: r > 0.93 ? 'Chien, sonner fort' : r > 0.9 ? 'Boîte aux lettres sur le côté' : '',
-        code: d.flats > 1 ? String(1000 + Math.floor(rand() * 8999)) : '',
+        code: flats > 1 ? (rand() < 0.5 ? 'A' : 'B') + String(1000 + Math.floor(rand() * 8999)) : '',
       });
     }
   });
@@ -156,6 +161,20 @@ export async function buildDemo(now = Date.now()) {
         visits.push({ id: uid('v'), doorId: door.id, sectorId: s.id, ts: ts - 864e5, by: p.crew, result: 'absent' });
         res = rand() < 0.7 ? 'donne' : 'refus';
       }
+      if (door.flats > 1) {
+        // Immeuble : un passage par logement (101, 102… 201…).
+        const share = p.status === 'done' ? 1 : p.tonight || p.live ? 0.5 + rand() * 0.4 : 0.8;
+        const nUnits = Math.max(1, Math.round(door.flats * share));
+        for (let u = 0; u < nUnits; u++) {
+          const label = `${1 + Math.floor(u / 4)}0${1 + (u % 4)}`;
+          let ur = result();
+          if (p.status === 'done' && ur === 'absent') ur = rand() < 0.7 ? 'donne' : 'refus';
+          const uv = { id: uid('v'), doorId: door.id, sectorId: s.id, ts: ts + u * 40e3, by: p.crew, result: ur, unit: label };
+          if (ur === 'donne') { uv.amount = amount(door); uv.method = method(); uv.calendars = 1; if (uv.method === 'cheque') { uv.name = pick(FIRST) + ' ' + pick(NAMES); uv.chequeNo = String(1000000 + Math.floor(rand() * 8999999)); } }
+          visits.push(uv);
+        }
+        continue;
+      }
       const v = { id: uid('v'), doorId: door.id, sectorId: s.id, ts, by: p.crew, result: res };
       if (res === 'donne') {
         v.amount = amount(door);
@@ -163,7 +182,6 @@ export async function buildDemo(now = Date.now()) {
         v.calendars = rand() < 0.06 ? 2 : 1;
         if (rand() < 0.35 || v.method === 'cheque') v.name = pick(FIRST) + ' ' + pick(NAMES);
         if (v.method === 'cheque') v.chequeNo = String(1000000 + Math.floor(rand() * 8999999));
-        if (door.flats > 1) v.unit = 'Apt ' + (1 + Math.floor(rand() * 4)) + '0' + (1 + Math.floor(rand() * 4));
       }
       visits.push(v);
     }
@@ -177,7 +195,7 @@ export async function buildDemo(now = Date.now()) {
   handovers[0].expected = s1cash;
   handovers[0].counted = s1cash;
 
-  const stock = DEMO_MEMBERS.filter((m) => m.role !== 'tresorier').map((m, i) => ({ id: 'st-' + i, ts: now - 21 * 864e5, memberId: m.id, qty: 200 + i * 10, note: 'Carton de départ' }));
+  const stock = DEMO_MEMBERS.filter((m) => m.role !== 'tresorier').map((m, i) => ({ id: 'st-' + i, ts: now - 21 * 864e5, memberId: m.id, qty: 400 + i * 20, note: 'Carton de départ' }));
 
   return {
     data: {

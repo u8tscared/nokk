@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Progress, Avatar, Empty, toast, Field, DotIcon } from '../ui/ui.jsx';
 import { data, byDoor, doorsBySector, setCurrentSector, memberById, removeSector, updateSector, addDoor, role, position, demo } from '../lib/store.js';
-import { sectorStats, formatEuro, totals } from '../lib/model.js';
+import { sectorStats, formatEuro, totals, doorState, isDone } from '../lib/model.js';
 import { openSheet, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { fitSector, mapInstance } from '../ui/MapView.jsx';
@@ -16,6 +16,13 @@ import { bbox } from '../lib/geo.js';
 function SectorCard({ s }) {
   const doors = doorsBySector.value.get(s.id) || [];
   const st = sectorStats(doors, byDoor.value);
+  const homes = doors.reduce((a, d) => {
+    const ds = doorState(d, byDoor.value.get(d.id));
+    const f = d.flats > 1 ? d.flats : 1;
+    a.total += f;
+    a.done += d.flats > 1 ? (ds.closed ? f : Math.min(f, ds.units || 0)) : isDone(ds.state) ? 1 : 0;
+    return a;
+  }, { total: 0, done: 0 });
   const crew = (s.assignees || []).map((id) => memberById.value.get(id)).filter(Boolean);
   const current = data.value.currentSectorId === s.id;
   const tone = st.pct === 100 ? 'ok' : st.done ? 'coral' : 'muted';
@@ -26,6 +33,7 @@ function SectorCard({ s }) {
           <div class="grow">
             <div class="card-title">{s.name}</div>
             <div class="small muted">{s.area ? s.area + ' · ' : ''}{st.total} portes</div>
+            <div class="sector-units"><Icon name="building" /> {homes.done} / {homes.total} logements faits</div>
           </div>
           <span class={'pill tone-' + tone}>{st.pct === 100 ? 'Terminé' : st.done ? `${st.pct} %` : 'À faire'}</span>
         </div>
@@ -149,14 +157,20 @@ export function SectorsScreen() {
     <div class="page rise">
       <div class="page-head">
         <div><h1>Secteurs</h1><div class="sub">{d.sectors.length} secteurs · {d.doors.length} portes · {formatEuro(t.amount)}</div></div>
-        {canCreate && <Button kind="small" icon="plus" onClick={openCreateChooser} data-testid="new-sector">Nouveau</Button>}
       </div>
       {d.sectors.length === 0 ? (
         <div class="card">
-          <Empty icon="sectors" title="Votre premier secteur" text="Tracez votre zone sur la carte. Nokk trouve les rues, les numéros et le parcours le plus court." action={<Button kind="full" icon="draw" onClick={openCreateChooser}>Créer un secteur</Button>} />
+          <Empty icon="sectors" title="Votre premier secteur" text="Tracez votre zone sur la carte. Nokk trouve les rues, les numéros et le parcours le plus court." action={<Button kind="full" icon="draw" onClick={openCreateChooser} data-testid="new-sector">Créer un secteur</Button>} />
         </div>
       ) : (
         <div class="sector-grid">
+          {canCreate && (
+            <button class="new-sector-card" data-testid="new-sector" onClick={() => { feel('tap'); openCreateChooser(); }}>
+              <span class="plus"><Icon name="plus" /></span>
+              <span class="grow">Nouveau secteur<span class="tiny muted" style={{ display: 'block', fontWeight: 600 }}>Tracez la zone ici, Nokk trouve les rues et les numéros</span></span>
+              <Icon name="chevR" class="chev" />
+            </button>
+          )}
           {d.sectors.map((s) => <SectorCard s={s} key={s.id} />)}
         </div>
       )}

@@ -155,3 +155,29 @@ export function groupBy(list, fn) {
 export function uid(prefix = '') {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
+
+// Logements d'un immeuble : dernière visite par logement (sans la ligne « immeuble terminé »).
+export function unitsOf(list = []) {
+  const m = new Map();
+  for (const v of list) if (!v.closed) m.set(v.unit || '_' + v.id, v);
+  return [...m.values()];
+}
+
+// Logement suivant : 401 → 402, « B12 » → « B13 », « 2e gauche » → « 2e droite ».
+export function nextUnit(label) {
+  if (!label) return '';
+  const s = String(label).trim();
+  if (/gauche$/i.test(s)) return s.replace(/gauche$/i, 'droite');
+  const m = s.match(/^(.*?)(\d+)(\D*)$/);
+  if (!m) return '';
+  const n = String(+m[2] + 1).padStart(m[2].length, '0');
+  return m[1] + n + m[3];
+}
+
+// Logement précédent (pour le bouton −).
+export function prevUnit(label) {
+  const s = String(label || '').trim();
+  const m = s.match(/^(.*?)(\d+)(\D*)$/);
+  if (!m || +m[2] <= 0) return s;
+  return m[1] + String(+m[2] - 1).padStart(m[2].length, '0') + m[3];
+}

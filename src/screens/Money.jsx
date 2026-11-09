@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Avatar, Empty, toast, confetti, DotIcon, Bump, Seg, Field, Pill, Progress } from '../ui/ui.jsx';
-import { data, setData, me, memberById, addHandover, removeVisit, updateVisit, demo, role, mergeData, exportData } from '../lib/store.js';
+import { data, setData, me, memberById, addHandover, removeVisit, updateVisit, demo, role, mergeData, exportData, online } from '../lib/store.js';
 import { formatEuro, totals, countCash, reconcile, DENOMS, RESULTS, METHODS, groupBy } from '../lib/model.js';
 import { pocket, breakdown, csv, chequeList } from '../lib/compta.js';
 import { openSheet, go } from '../lib/nav.js';
@@ -34,48 +34,47 @@ export function CaisseScreen() {
     openSheet(({ close }) => <HandoverSheet close={close} expected={p.especes} counted={touched ? counted : p.especes} counts={touched ? counts : null} visits={p.visits} cheques={p.nbCheques} chequeAmount={p.cheque} onDone={() => setCounts({})} />, { label: 'Remettre la caisse' });
   }
 
+  const bills = DENOMS.filter((x) => x.kind === 'billet');
+  const coins = DENOMS.filter((x) => x.kind === 'piece');
+  const tile = (x) => {
+    const n = +counts[x.v] || 0;
+    const label = x.v >= 1 ? x.v + ' €' : String(x.v).replace('0.', '0,') + ' €';
+    return (
+      <div class={'dtile ' + x.kind + (n ? ' on' : '')} key={x.v}>
+        <div class="face">
+          <span class="val">{label}</span>
+          <span class="sub num">{n ? <Bump value={n}>{euro(Math.round(x.v * 100) * n)}</Bump> : ''}</span>
+        </div>
+        <div class="ctl">
+          <IconButton icon="minus" label={`Retirer un ${x.kind} de ${x.v} €`} onClick={() => setCount(x.v, n - 1)} disabled={!n} />
+          <input class="input dn" aria-label={`Nombre de ${x.kind}s de ${x.v} €`} value={n || ''} placeholder="0" onInput={(e) => setCount(x.v, parseInt(e.currentTarget.value.replace(/\D/g, '') || '0', 10))} {...inputKinds.int} />
+          <IconButton icon="plus" label={`Ajouter un ${x.kind} de ${x.v} €`} onClick={() => setCount(x.v, n + 1)} />
+        </div>
+      </div>
+    );
+  };
+  const msg = !touched ? 'Comptez billets et pièces : Nokk compare avec ce qui a été saisi.' : rec.diff === 0 ? 'La caisse tombe juste.' : rec.diff > 0 ? 'Il y a plus que prévu : un don non saisi ?' : "Il manque de l'argent : vérifiez les dons en espèces dans le journal.";
+
   return (
-    <div class="page rise">
+    <div class="page rise caisse-page">
       <div class="page-head"><div><h1>Caisse</h1><div class="sub">{m ? `Ce que ${crew.length > 1 ? 'votre binôme a' : 'vous avez'} encore en poche` : ''}</div></div></div>
       <div class="cols-2">
         <div>
           <div class="card cash-hero">
             <div class="tiny muted">Espèces à remettre</div>
-            <Bump value={p.especes} class="big-num" >{euro(p.especes)}</Bump>
-            <div class="cash-split">
-              <div><DotIcon icon="cheque" tone="info" sm /><div><b>{p.nbCheques} chèque{p.nbCheques > 1 ? 's' : ''}</b><div class="tiny muted">{euro(p.cheque)}</div></div></div>
-              <div><DotIcon icon="card" tone="ok" sm /><div><b>Carte</b><div class="tiny muted">{euro(p.carte)}</div></div></div>
-              <div><DotIcon icon="calendar" tone="coral" sm /><div><b>{p.calendars} calendriers</b><div class="tiny muted">{p.count} dons</div></div></div>
+            <Bump value={p.especes} class="big-num">{euro(p.especes)}</Bump>
+            <div class="cash-lines">
+              <div class="cash-line"><span class="k"><Icon name="cheque" /> Chèques</span><span class="v">{euro(p.cheque)}</span><span class="s">{p.nbCheques} chèque{p.nbCheques > 1 ? 's' : ''}</span></div>
+              <div class="cash-line"><span class="k"><Icon name="card" /> Carte</span><span class="v">{euro(p.carte)}</span><span class="s">terminal</span></div>
+              <div class="cash-line"><span class="k"><Icon name="calendar" /> Calendriers</span><span class="v">{p.calendars}</span><span class="s">{p.count} dons</span></div>
             </div>
           </div>
 
           <div class="card">
-            <div class="hrow between"><div class="card-title">Compter les espèces</div>{touched && <button class="link-btn" onClick={() => setCounts({})}>Remettre à zéro</button>}</div>
-            <div class="denoms">
-              {DENOMS.map((x) => {
-                const n = +counts[x.v] || 0;
-                return (
-                  <div class={'denom ' + x.kind} key={x.v}>
-                    <span class="dv">{x.v >= 1 ? x.v : String(x.v).replace('0.', '0,')}<small>€</small></span>
-                    <IconButton icon="minus" label={`Retirer un ${x.kind} de ${x.v} €`} class="flat" onClick={() => setCount(x.v, n - 1)} disabled={!n} />
-                    <input class="input dn" aria-label={`Nombre de ${x.kind}s de ${x.v} €`} value={n || ''} placeholder="0" onInput={(e) => setCount(x.v, parseInt(e.currentTarget.value.replace(/\D/g, '') || '0', 10))} {...inputKinds.int} />
-                    <IconButton icon="plus" label={`Ajouter un ${x.kind} de ${x.v} €`} class="flat" onClick={() => setCount(x.v, n + 1)} />
-                    <span class="dt num">{n ? euro(Math.round(x.v * 100) * n) : ''}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div class={'reco tone-' + (touched ? rec.tone : 'muted')}>
-              <div><div class="tiny">Compté</div><Bump value={counted} class="big-num">{euro(counted)}</Bump></div>
-              <div class="right">
-                <div class="tiny">Écart</div>
-                <div class="big-num">{touched ? (rec.diff > 0 ? '+' : '') + euro(rec.diff) : '–'}</div>
-              </div>
-            </div>
-            <p class="tiny muted">{!touched ? 'Comptez billets et pièces : Nokk compare avec ce qui a été saisi.' : rec.diff === 0 ? 'La caisse tombe juste.' : rec.diff > 0 ? 'Il y a plus que prévu : un don non saisi ?' : 'Il manque de l\'argent : vérifiez les dons en espèces dans le journal.'}</p>
-          </div>
-          <div class="sticky-action">
-            <Button kind="full" icon="cash" disabled={!p.count} onClick={handover} data-testid="handover">Remettre la caisse</Button>
+            <div class="count-head"><div class="card-title">Compter les espèces</div>{touched && <button class="link-btn" onClick={() => setCounts({})}>Remettre à zéro</button>}</div>
+            <div class="count-group"><h4>Billets</h4><div class="denom-grid">{bills.map(tile)}</div></div>
+            <div class="count-group"><h4>Pièces</h4><div class="denom-grid coins">{coins.map(tile)}</div></div>
+            <div class={'reco-msg tone-' + (touched ? rec.tone : 'muted')}><Icon name={touched && rec.diff === 0 ? 'check' : 'help'} size={18} /> {msg}</div>
           </div>
         </div>
         <div>
@@ -98,6 +97,25 @@ export function CaisseScreen() {
           </div>
         </div>
       </div>
+      <div class="cash-bar">
+        <div class="figs">
+          <div><div class="k">{touched ? 'Compté' : 'Attendu'}</div><div class="v cash-big"><Bump value={touched ? counted : p.especes}>{euro(touched ? counted : p.especes)}</Bump></div></div>
+          {touched && <div><div class="k">Écart</div><div class={'v ' + rec.tone}>{(rec.diff > 0 ? '+' : '') + euro(rec.diff)}</div></div>}
+        </div>
+        <Button kind="coral small" icon="cash" disabled={!p.count} onClick={handover} data-testid="handover">Remettre</Button>
+      </div>
+    </div>
+  );
+}
+
+// Statuts discrets en haut des pages (hors ligne, démo).
+export function PageStatus() {
+  const off = !online.value;
+  if (!off && !demo.value) return null;
+  return (
+    <div class="page-status">
+      {off && <span><i /> Hors ligne · tout est gardé</span>}
+      {demo.value && <span class="demo"><i /> Mode démo</span>}
     </div>
   );
 }

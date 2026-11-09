@@ -10,7 +10,7 @@ export function tokens() {
     bg: v('--map-bg'), road: v('--map-road'), casing: v('--map-casing'), building: v('--map-building'),
     park: v('--map-park'), water: v('--map-water'), label: v('--map-label'), ink: v('--ink'), paper: v('--paper'),
     done: v('--st-done'), live: v('--st-live'), repasser: v('--st-repasser'), todo: v('--st-todo'),
-    accent: v('--accent'), coral: v('--accent-2'), muted: v('--muted'), bad: v('--bad'),
+    accent: v('--accent'), coral: v('--accent-2'), muted: v('--muted'), bad: v('--bad'), info: v('--info'),
   };
 }
 
