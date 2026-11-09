@@ -131,7 +131,9 @@ export function enclose(seed, lines, { rays = 120, maxR = 1600, pad = 18 } = {})
     }
     return maxR;
   });
-  const ring = fill.map((r, k) => { const a = (k / rays) * 2 * Math.PI; return L.from([Math.cos(a) * (r + pad), Math.sin(a) * (r + pad)]); });
+  // On lisse les pics isolés (médiane sur 5 rayons voisins).
+  const smooth = fill.map((_, i) => { const w = [-2, -1, 0, 1, 2].map((d) => fill[(i + d + rays) % rays]).sort((x, y) => x - y); return w[2]; });
+  const ring = smooth.map((r, k) => { const a = (k / rays) * 2 * Math.PI; return L.from([Math.cos(a) * (r + pad), Math.sin(a) * (r + pad)]); });
   return simplify(ring, 36);
 }
 
