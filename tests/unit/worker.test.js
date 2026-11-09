@@ -1,30 +1,8 @@
 // API Nokk testée de bout en bout : vraie base SQLite (comme D1), vrais jetons RS256 signés pour le test.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import worker, { verifyToken } from '../../worker/index.js';
 
-const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
-
-function d1() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(readFileSync(new URL('../../worker/schema.sql', import.meta.url), 'utf8'));
-  const stmt = (sql, args = []) => ({
-    bind: (...a) => stmt(sql, a),
-    first: async () => db.prepare(sql).get(...args) ?? null,
-    all: async () => ({ results: db.prepare(sql).all(...args) }),
-    run: async () => { const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes } }; },
-    _exec: () => db.prepare(sql).run(...args),
-  });
-  return {
-    prepare: (sql) => stmt(sql),
-    batch: async (list) => {
-      db.exec('BEGIN');
-      try { for (const s of list) s._exec(); db.exec('COMMIT'); } catch (e) { db.exec('ROLLBACK'); throw e; }
-      return [];
-    },
-  };
-}
+import { d1 } from '../support/d1.js';
 
 const PROJECT = 'nokk-test';
 let keyPair, jwk;

@@ -9,7 +9,10 @@ import { SectorsScreen } from './screens/Sectors.jsx';
 import { CaisseScreen, ComptesScreen, JournalScreen, ExportsScreen, PageStatus } from './screens/Money.jsx';
 import { TeamScreen } from './screens/Team.jsx';
 import { SettingsScreen, FormationScreen, MoreScreen } from './screens/Settings.jsx';
-import { Login, Onboarding, WhoAmI } from './screens/Welcome.jsx';
+import { Login, Onboarding, WhoAmI, SaveGate } from './screens/Welcome.jsx';
+import { TeamChoice, AccountBusy, AccountFailed } from './screens/Account.jsx';
+import { account, accountStep, firstLoad } from './lib/account.js';
+import { authUser } from './lib/auth.js';
 import { exitDemo } from './lib/store.js';
 import { toast } from './ui/ui.jsx';
 
@@ -83,9 +86,30 @@ function Capsules() {
   );
 }
 
+// Écran d'accueil selon le compte : connexion, équipe à choisir, récupération en cours…
+function accountGate(d, creating, setCreating, later, setLater) {
+  const local = !!(d.org || d.members.length);
+  const a = account.value;
+  const step = accountStep.value;
+  if (creating && !local) return <Onboarding onBack={() => setCreating(false)} />;
+  if (!a) {
+    if (authUser.value && step === 'loading') return <AccountBusy text="Connexion…" />;
+    if (authUser.value && step === 'error') return <AccountFailed />;
+    if (!local) return <Login onCreate={() => setCreating(true)} onLocal={() => setLater(true)} />;
+    if (!later) return <SaveGate onLater={() => { try { sessionStorage.setItem('nokk:later', '1'); } catch {} setLater(true); }} />;
+    return null;
+  }
+  if (local) return null;
+  if (firstLoad.value || step === 'loading') return <AccountBusy />;
+  if (step === 'error') return <AccountFailed />;
+  if (!a.team) return <TeamChoice onCreate={() => setCreating(true)} />;
+  return <Onboarding onBack={() => {}} />; // équipe en ligne encore vide
+}
+
 export function App() {
   const d = data.value;
   const [creating, setCreating] = useState(false);
+  const [later, setLater] = useState(() => { try { return sessionStorage.getItem('nokk:later') === '1'; } catch { return false; } });
   const m = me.value;
   let r = route.value;
 
@@ -97,14 +121,8 @@ export function App() {
   }, [r, ok]);
   if (!ok || r === 'saisir') r = 'carte';
 
-  if (!demo.value && !d.org && !d.members.length) {
-    return (
-      <>
-        {creating ? <Onboarding onBack={() => setCreating(false)} /> : <Login onCreate={() => setCreating(true)} />}
-        <Toasts />
-      </>
-    );
-  }
+  const gate = !demo.value && accountGate(d, creating, setCreating, later, setLater);
+  if (gate) return (<>{gate}<Toasts /></>);
   if (!demo.value && !m) return (<><WhoAmI /><Toasts /></>);
 
   const Page = PAGES[r];

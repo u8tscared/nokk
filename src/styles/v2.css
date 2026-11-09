@@ -320,3 +320,26 @@
 .hud-wrap { position: absolute; inset: 0; display: grid; place-items: center; }
 .door-tools3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .door-tools3 .link-btn { justify-content: center; white-space: nowrap; font-size: 14px; padding-left: 4px; padding-right: 4px; }
+
+/* ——— V3 : compte et sauvegarde ——— */
+.welcome { bottom: calc(0px - var(--vgap, 0px)); }
+.btn.google-btn { --b-bg: var(--paper); --b-fg: var(--ink); --b-edge: var(--rim-2); border: 1.5px solid var(--rim-2); }
+.btn.google-btn .ico { width: 20px; height: 20px; }
+.auth-card { padding: 18px; }
+.auth-err { color: var(--bad); font-weight: 700; font-size: 14px; background: var(--tint-bad); border-radius: 12px; padding: 10px 12px; }
+.auth-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+button.link { color: var(--accent-ink); font-weight: 700; min-height: 44px; padding: 0 4px; font-size: 14.5px; }
+button.link.center { align-self: center; }
+.join-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--tint); font-weight: 600; font-size: 14.5px; }
+.code-input { font-family: var(--d); font-size: 26px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; font-weight: 800; }
+.invite-code { font-family: var(--d); font-size: 38px; font-weight: 800; letter-spacing: 0.22em; text-align: center; padding: 14px 0 12px; font-variant-numeric: tabular-nums; }
+.sync-line { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 16px; background: var(--bg); font-weight: 600; font-size: 14px; min-height: 48px; }
+.center-body { min-height: 100%; justify-content: center; align-items: center; text-align: center; }
+.welcome-title.center, .muted.center { text-align: center; }
+.sync-orb { position: relative; width: 84px; height: 84px; }
+.sync-orb i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; animation: orb 1.8s var(--ease) infinite; }
+.sync-orb i:nth-child(2) { animation-delay: 0.6s; }
+.sync-orb i:nth-child(3) { animation-delay: 1.2s; }
+.sync-orb::after { content: ''; position: absolute; inset: 30px; border-radius: 50%; background: var(--accent); }
+@keyframes orb { 0% { transform: scale(0.35); opacity: 0.9; } 100% { transform: scale(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sync-orb i { animation: none; opacity: 0.4; } }

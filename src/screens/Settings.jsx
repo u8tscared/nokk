@@ -10,6 +10,8 @@ import { inputKinds } from '../lib/keyboard.js';
 import { applyTheme } from '../lib/theme.js';
 import { installHelp, canInstall, promptInstall } from '../lib/install.jsx';
 import { askSwitch } from './Team.jsx';
+import { AccountCard } from './Account.jsx';
+import { account } from '../lib/account.js';
 import { formatEuro } from '../lib/model.js';
 
 function Toggle({ id, label, sub, icon, tone, checked, onChange }) {
@@ -30,6 +32,7 @@ export function SettingsScreen() {
   return (
     <div class="page rise">
       <div class="page-head"><div><h1>Réglages</h1><div class="sub">Sur cet appareil</div></div></div>
+      {!demo.value && <AccountCard />}
       <div class="card tight list">
         <Toggle id="snd" label="Son" sub="Petits sons discrets à chaque geste" icon="sound" checked={s.sound} onChange={(v) => saveSettings({ sound: v })} />
         <Toggle id="vib" label="Vibration" sub="Android seulement, l'iPhone ne vibre pas depuis le web" icon="phone" checked={s.haptics} onChange={(v) => saveSettings({ haptics: v })} />
@@ -77,7 +80,7 @@ export function SettingsScreen() {
       </div>
       {demo.value ? (
         <Button kind="coral full" onClick={() => { exitDemo(); go('carte', { replace: true }); toast('Démo terminée'); }}>Quitter la démo</Button>
-      ) : isChef ? (
+      ) : isChef && !account.value ? (
         <div class="card">
           {!confirm ? (
             <Button kind="danger full" icon="trash" onClick={() => setConfirm(true)}>Effacer toutes les données</Button>

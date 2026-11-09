@@ -49,7 +49,12 @@ export function moreFor(member, simple = false) {
 }
 
 // ——— Routeur (hash + historique propre) ———
-const initial = typeof location !== 'undefined' ? location.hash.replace(/^#\/?/, '') : '';
+let initial = typeof location !== 'undefined' ? location.hash.replace(/^#\/?/, '') : '';
+// Lien d'invitation : #join=CODE (gardé jusqu'à la connexion).
+if (/^join=/.test(initial)) {
+  try { localStorage.setItem('nokk:join', initial.slice(5).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); } catch {}
+  initial = 'carte';
+}
 export const route = signal(initial || 'carte');
 export const sheets = signal([]); // [{ id, render, opts }]
 

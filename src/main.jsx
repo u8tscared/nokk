@@ -10,6 +10,7 @@ import { installFreeze } from './lib/freeze.js';
 import { installTheme } from './lib/theme.js';
 import { installOnline } from './lib/offline.js';
 import { resumeGeoIfGranted } from './lib/geoloc.js';
+import { bootAccount } from './lib/account.js';
 
 installTheme();
 installRouter();
@@ -17,6 +18,7 @@ installKeyboard();
 installFreeze();
 installOnline();
 resumeGeoIfGranted();
+bootAccount();
 
 // iOS 26, app installée : la fenêtre s'arrête parfois ~60 px avant le bas de l'écran (bande vide sous
 // la barre d'onglets). On mesure l'écart avec la vraie hauteur de l'écran et le cadre de l'app le comble.
@@ -52,4 +54,6 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 import * as store from './lib/store.js';
 import * as nav from './lib/nav.js';
 import('./screens/DoorSheet.jsx').then((m) => { window.__nokk.openDoor = m.openDoor; });
-window.__nokk = { store, nav };
+import * as sync from './lib/sync.js';
+import * as accountMod from './lib/account.js';
+window.__nokk = { store, nav, sync, account: accountMod };

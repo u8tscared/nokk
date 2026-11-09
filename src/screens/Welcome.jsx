@@ -9,46 +9,92 @@ import { installHelp } from '../lib/install.jsx';
 import { formatEuro } from '../lib/model.js';
 import { startDemo } from '../lib/demoMode.js';
 import { PinPad } from './Team.jsx';
+import { SignIn } from './Account.jsx';
+import { pendingJoin, account, createTeamOnline } from '../lib/account.js';
 
 export function DemoButton({ kind = 'ghost' }) {
   return <Button kind={kind + ' full'} icon="eye" onClick={startDemo} data-testid="demo">Essayer la démo</Button>;
 }
 
-export function Login({ onCreate }) {
+function WelcomeArt() {
+  return (
+    <div class="welcome-art" aria-hidden="true">
+      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+        <g fill="none" stroke="var(--map-road)" stroke-linecap="round">
+          <path d="M-20 80 H420" stroke-width="16" /><path d="M120 -20 V320" stroke-width="16" /><path d="M300 -20 V320" stroke-width="12" /><path d="M-20 210 H420" stroke-width="12" />
+        </g>
+        <path d="M-20 80 H120" stroke="var(--st-done)" stroke-width="7" stroke-linecap="round" class="draw-in" />
+        <path d="M120 80 V210" stroke="var(--st-done)" stroke-width="7" stroke-linecap="round" class="draw-in d2" />
+        <path d="M120 210 H300" stroke="var(--st-live)" stroke-width="7" stroke-linecap="round" class="draw-in d3" />
+        <path d="M300 210 V320" stroke="var(--st-repasser)" stroke-width="7" stroke-linecap="round" class="draw-in d4" />
+        <circle cx="300" cy="210" r="12" fill="var(--accent-2)" class="pulse-dot" />
+      </svg>
+    </div>
+  );
+}
+
+function FileJoin() {
+  return (
+    <>
+      <label class="btn soft full" for="joinfile"><Icon name="upload" /> J'ai reçu un fichier Nokk</label>
+      <input id="joinfile" type="file" accept=".json,application/json" hidden onChange={async (e) => {
+        const f = e.currentTarget.files?.[0];
+        if (!f) return;
+        try {
+          const j = JSON.parse(await f.text());
+          if (j.app !== 'nokk') throw new Error();
+          mergeData(j);
+          feel('ok');
+          toast('Équipe reçue. Qui êtes-vous ?');
+        } catch { toast("Ce fichier n'est pas un fichier Nokk", { error: true }); }
+      }} />
+    </>
+  );
+}
+
+export function Login({ onCreate, onLocal }) {
+  const [local, setLocal] = useState(false);
+  const join = pendingJoin();
   return (
     <div class="welcome">
-      <div class="welcome-art" aria-hidden="true">
-        <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
-          <g fill="none" stroke="var(--map-road)" stroke-linecap="round">
-            <path d="M-20 80 H420" stroke-width="16" /><path d="M120 -20 V320" stroke-width="16" /><path d="M300 -20 V320" stroke-width="12" /><path d="M-20 210 H420" stroke-width="12" />
-          </g>
-          <path d="M-20 80 H120" stroke="var(--st-done)" stroke-width="7" stroke-linecap="round" class="draw-in" />
-          <path d="M120 80 V210" stroke="var(--st-done)" stroke-width="7" stroke-linecap="round" class="draw-in d2" />
-          <path d="M120 210 H300" stroke="var(--st-live)" stroke-width="7" stroke-linecap="round" class="draw-in d3" />
-          <path d="M300 210 V320" stroke="var(--st-repasser)" stroke-width="7" stroke-linecap="round" class="draw-in d4" />
-          <circle cx="300" cy="210" r="12" fill="var(--accent-2)" class="pulse-dot" />
-        </svg>
-      </div>
+      <WelcomeArt />
       <div class="welcome-body">
         <div class="hrow"><Logo size={44} animated /><Wordmark size={34} /></div>
         <h1 class="welcome-title">La tournée des calendriers, sans carnet ni calculette.</h1>
-        <p class="muted">Secteurs sur la carte, parcours le plus court, chaque porte en deux gestes, et la caisse qui tombe juste.</p>
-        <div class="stack s8">
-          <Button kind="full" icon="team" onClick={onCreate} data-testid="create-team">Créer mon équipe</Button>
-          <label class="btn soft full" for="joinfile"><Icon name="upload" /> J'ai reçu un fichier Nokk</label>
-          <input id="joinfile" type="file" accept=".json,application/json" hidden onChange={async (e) => {
-            const f = e.currentTarget.files?.[0];
-            if (!f) return;
-            try {
-              const j = JSON.parse(await f.text());
-              if (j.app !== 'nokk') throw new Error();
-              mergeData(j);
-              feel('ok');
-              toast('Équipe reçue. Qui êtes-vous ?');
-            } catch { toast("Ce fichier n'est pas un fichier Nokk", { error: true }); }
-          }} />
-          <DemoButton />
-        </div>
+        {join ? (
+          <div class="join-banner" data-testid="join-banner"><DotIcon icon="team" tone="info" /><span>Vous êtes invité dans une équipe. Connectez-vous pour la rejoindre.</span></div>
+        ) : (
+          <p class="muted">Secteurs sur la carte, parcours le plus court, chaque porte en deux gestes. Tout est sauvegardé en ligne.</p>
+        )}
+        {!local ? (
+          <div class="stack s8">
+            <SignIn />
+            <DemoButton />
+            <button class="link center" onClick={() => { setLocal(true); onLocal?.(); }} data-testid="no-account">Utiliser sans compte</button>
+          </div>
+        ) : (
+          <div class="stack s8 anim-in">
+            <p class="small muted">Sans compte, les tournées restent seulement sur ce téléphone. Vous pourrez vous connecter plus tard depuis les réglages.</p>
+            <Button kind="full" icon="team" onClick={onCreate} data-testid="create-team">Créer mon équipe</Button>
+            <FileJoin />
+            <button class="link center" onClick={() => setLocal(false)}>Revenir à la connexion</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Tournées déjà saisies sur ce téléphone, sans compte : on propose de les mettre à l'abri.
+export function SaveGate({ onLater }) {
+  return (
+    <div class="welcome">
+      <div class="welcome-body">
+        <DotIcon icon="lock" tone="warn" />
+        <h1 class="welcome-title">Mettez vos tournées à l'abri</h1>
+        <p class="muted">Nokk sauvegarde maintenant tout en ligne. Connectez-vous : ce qui est déjà saisi sur ce téléphone est envoyé tout de suite, et rien ne se perd, même si le téléphone casse.</p>
+        <SignIn />
+        <button class="link center" onClick={onLater} data-testid="later">Plus tard</button>
       </div>
     </div>
   );
@@ -70,9 +116,29 @@ export function WhoAmI() {
             </button>
           ))}
         </div>
-        <DemoButton />
+        {account.value ? <NotListed /> : <DemoButton />}
       </div>
     </div>
+  );
+}
+
+// Nouvel équipier connecté qui n'est pas encore dans la liste : il s'ajoute lui-même.
+function NotListed() {
+  const [name, setName] = useState(account.value?.name || '');
+  const [open, setOpen] = useState(!data.value.members.length);
+  if (!open) return <button class="link center" onClick={() => setOpen(true)} data-testid="not-listed">Je ne suis pas dans la liste</button>;
+  return (
+    <form class="card stack s8 anim-in" onSubmit={(e) => {
+      e.preventDefault();
+      if (name.trim().length < 2) { shake(document.getElementById('nl-name')); return; }
+      const m = addMember({ name: name.trim(), role: 'pompier' });
+      switchUser(m.id);
+      feel('done');
+      toast('Bienvenue ' + name.trim().split(' ')[0]);
+    }}>
+      <Field id="nl-name" label="Votre prénom et nom"><input id="nl-name" class="input" value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} data-autofocus enterKeyHint="done" /></Field>
+      <Button kind="full" type="submit" data-testid="add-me">C'est moi</Button>
+    </form>
   );
 }
 
@@ -111,6 +177,7 @@ export function Onboarding({ onBack }) {
     confetti();
     toast('Votre équipe est prête');
     go('secteurs', { replace: true });
+    if (account.peek() && !account.peek().team) createTeamOnline().catch(() => toast('Équipe gardée sur ce téléphone. Sauvegarde en ligne dès que le réseau revient.', { error: true }));
   }
 
   const titles = ['Comment vous appelez-vous ?', 'Votre amicale', 'Votre rôle', 'Seul ou en binôme ?', 'Le don habituel', 'Nokk sur votre écran d\'accueil'];
