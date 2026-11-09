@@ -147,10 +147,9 @@ test('tracer au doigt et retirer une zone où on ne passe pas', async ({ page })
   expect(outer).toBeGreaterThan(10);
 
   // Une zone retirée au milieu, en touchant ses coins.
-  await page.evaluate(() => { window.__clk = 0; window.__nokkCreatorMap.on('click', () => window.__clk++); window.__nokkCreatorMap.getCanvasContainer().addEventListener('mousedown', () => window.__md = (window.__md||0)+1); });
   await page.getByTestId('add-hole').click();
   await expect(page.getByTestId('hole-hint')).toBeVisible();
-  for (const [dx, dy] of [[-40, -40], [40, -40], [40, 40], [-40, 40]]) { await page.mouse.click(cx + dx, cy + dy); console.log('H', await page.evaluate(() => [window.__clk, window.__md])); }
+  for (const [dx, dy] of [[-40, -40], [40, -40], [40, 40], [-40, 40]]) await page.mouse.click(cx + dx, cy + dy);
   await page.getByTestId('hole-done').click();
   await expect(page.getByTestId('undo-hole')).toBeVisible();
   const hole = await page.evaluate(() => window.__nokkCreatorMap.getSource('draw').serialize().data.features.find((f) => f.geometry.type === 'Polygon').geometry.coordinates);

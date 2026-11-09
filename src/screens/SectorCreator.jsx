@@ -195,7 +195,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const ll = (e) => { const r = el.getBoundingClientRect(); const px = [e.clientX - r.left, e.clientY - r.top]; return [px, map.unproject(px).toArray()]; };
     const show = () => map.getSource('stroke')?.setData(fc(stroke && stroke.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: stroke } }] : []));
     const down = (e) => {
-      if (e.isPrimary === false || stageRef.current !== 'draw') return;
+      if (!fingerRef.current || e.isPrimary === false || stageRef.current !== 'draw') return;
       const [px, p] = ll(e);
       stroke = [p]; last = px;
       el.setPointerCapture?.(e.pointerId);
