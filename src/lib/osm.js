@@ -1,5 +1,6 @@
 // Transforme une réponse Overpass (OpenStreetMap) en rues, réseau piéton et portes.
 import { pointInPolygon, bbox, nearestOnLine } from './geo.js';
+import { fetchIgn } from './ign.js';
 
 export const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
@@ -21,25 +22,44 @@ out geom tags;
 out center tags;`;
 }
 
-export async function fetchOverpass(poly, { signal } = {}) {
-  const q = overpassQuery(poly);
-  let lastErr;
-  for (const url of OVERPASS) {
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(q),
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        signal,
-      });
-      if (r.ok) return await r.json();
-      lastErr = new Error('HTTP ' + r.status);
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      lastErr = e;
-    }
+// Un serveur Overpass, avec un délai maximum (ils sont souvent saturés).
+async function overpassOne(url, q, signal, ms) {
+  const ctrl = new AbortController();
+  const stop = () => ctrl.abort();
+  signal?.addEventListener('abort', stop);
+  const t = setTimeout(stop, ms);
+  try {
+    const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' }, signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!Array.isArray(j.elements)) throw new Error('réponse vide');
+    return j;
+  } finally {
+    clearTimeout(t);
+    signal?.removeEventListener('abort', stop);
   }
-  throw lastErr || new Error('réseau');
+}
+
+// OpenStreetMap : tous les serveurs en même temps, le premier qui répond gagne.
+export async function fetchOsmOnly(poly, { signal, timeout = 25000 } = {}) {
+  const q = overpassQuery(poly);
+  try {
+    return await Promise.any(OVERPASS.map((u) => overpassOne(u, q, signal, timeout)));
+  } catch (e) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    throw new Error('réseau');
+  }
+}
+
+// Adresses et rues de la zone : d'abord les données officielles (IGN, avec les logements par bâtiment),
+// sinon OpenStreetMap.
+export async function fetchOverpass(poly, { signal } = {}) {
+  try {
+    return await fetchIgn(poly, { signal });
+  } catch (e) {
+    if (e?.name === 'AbortError' || signal?.aborted) throw e;
+  }
+  return fetchOsmOnly(poly, { signal });
 }
 
 function numKey(n) {
@@ -91,11 +111,12 @@ export function processOsm(json, poly = null) {
       const key = (street || p.join(',')) + '|' + num.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
+      const known = parseInt(t['nokk:flats'] || '', 10); // nombre de logements officiel (IGN)
       const flatsTag = parseInt(t['building:flats'] || t['addr:flats'] || '', 10);
       const levels = parseInt(t['building:levels'] || '', 10);
       const apart = t.building === 'apartments' || flatsTag > 2 || levels >= 4;
-      const flats = apart ? (flatsTag > 0 ? flatsTag : Math.max(6, (levels || 4) * 3)) : 1;
-      doors.push({ street, num, p, flats: Math.min(flats, 80) });
+      const flats = known > 0 ? Math.max(1, Math.round(known / Math.min(nums.length, 4))) : apart ? (flatsTag > 0 ? flatsTag : Math.max(6, (levels || 4) * 3)) : 1;
+      doors.push({ street, num, p, flats: Math.min(flats, 200) });
     }
   }
 
