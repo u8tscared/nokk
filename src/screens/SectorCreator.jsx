@@ -18,6 +18,7 @@ import { readPlanPhoto, traceFromPlan, simplify } from '../lib/plan.js';
 
 const fc = (features) => ({ type: 'FeatureCollection', features });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const midpoints = (l) => (l.length > 2 ? l.map((q, j) => { const r = l[(j + 1) % l.length]; return [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2]; }) : []);
 
 export function openCreator(opts = {}) {
   closeAllSheets();
@@ -66,7 +67,10 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   const [holePts, setHolePts] = useState([]);
   const [mode, setMode] = useState('outer'); // outer | hole
   const [finger, setFinger] = useState(false);
+  const [dragIdx, setDragIdx] = useState(-1);
   const modeRef = useRef(mode); modeRef.current = mode;
+  const ptsRef = useRef(points); ptsRef.current = points;
+  const holePtsRef = useRef(holePts); holePtsRef.current = holePts;
   const fingerRef = useRef(finger); fingerRef.current = finger;
   const [whole, setWhole] = useState(false); // contour posé d'un coup (doigt ou photo) : « Effacer » plutôt que « Retirer »
   const strokeEnd = useRef(0);
@@ -149,8 +153,50 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       map.addLayer({ id: 'holes-fill', type: 'fill', source: 'holes', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': t.ink, 'fill-opacity': 0.22 } });
       map.addLayer({ id: 'holes-line', type: 'line', source: 'holes', filter: ['!=', ['geometry-type'], 'Point'], paint: { 'line-color': t.ink, 'line-width': 2, 'line-dasharray': [2, 1.5] } });
       map.addLayer({ id: 'stroke', type: 'line', source: 'stroke', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.coral, 'line-width': 4, 'line-opacity': 0.9 } });
-      map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': t.paper, 'circle-stroke-color': t.coral, 'circle-stroke-width': 3 } });
+      map.addLayer({ id: 'draw-mid', type: 'circle', source: 'draw', filter: ['==', ['get', 'k'], 'm'], paint: { 'circle-radius': 5, 'circle-color': t.coral, 'circle-opacity': 0.55, 'circle-stroke-color': t.paper, 'circle-stroke-width': 1.5 } });
+      map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw', filter: ['all', ['==', ['geometry-type'], 'Point'], ['!=', ['get', 'k'], 'm']], paint: { 'circle-radius': ['case', ['boolean', ['get', 'on'], false], 11, 7], 'circle-color': t.paper, 'circle-stroke-color': t.coral, 'circle-stroke-width': 3 } });
     });
+    // Ajuster le contour : on glisse un point pour le déplacer, ou un petit point du milieu pour en ajouter un.
+    let lastTouch = 0;
+    const grab = (e) => {
+      if (stageRef.current !== 'draw' || fingerRef.current) return;
+      if (e.type === 'touchstart') { if (e.points?.length !== 1) return; lastTouch = Date.now(); }
+      else if (Date.now() - lastTouch < 800) return;
+      const hole = modeRef.current === 'hole';
+      const list = hole ? holePtsRef.current : ptsRef.current;
+      if (!list.length) return;
+      const set = hole ? setHolePts : setPoints;
+      const at = (q) => { const c = map.project(q); return Math.hypot(c.x - e.point.x, c.y - e.point.y); };
+      let best = -1, bd = 24;
+      list.forEach((q, j) => { const d = at(q); if (d < bd) { bd = d; best = j; } });
+      let i = best;
+      if (i < 0 && list.length > 2) {
+        let md = 18;
+        list.forEach((q, j) => { const r = list[(j + 1) % list.length]; const m = [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2]; const d = at(m); if (d < md) { md = d; best = j; } });
+        if (best < 0) return;
+        const q = list[best], r = list[(best + 1) % list.length];
+        const m = [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2];
+        i = best + 1;
+        set((a) => [...a.slice(0, i), m, ...a.slice(i)]);
+      }
+      if (i < 0) return;
+      e.preventDefault();
+      setDragIdx(i);
+      feel('tick');
+      map.getCanvas().style.cursor = 'grabbing';
+      const move = (ev) => { const p = [ev.lngLat.lng, ev.lngLat.lat]; set((a) => a.map((q, j) => (j === i ? p : q))); };
+      const up = () => {
+        for (const k of ['mousemove', 'touchmove']) map.off(k, move);
+        for (const k of ['mouseup', 'touchend', 'touchcancel']) map.off(k, up);
+        strokeEnd.current = Date.now();
+        setDragIdx(-1);
+        map.getCanvas().style.cursor = '';
+      };
+      for (const k of ['mousemove', 'touchmove']) map.on(k, move);
+      for (const k of ['mouseup', 'touchend', 'touchcancel']) map.on(k, up);
+    };
+    map.on('mousedown', grab);
+    map.on('touchstart', grab);
     map.on('click', (e) => {
       if (stageRef.current !== 'draw') return;
       if (fingerRef.current) return;
@@ -187,7 +233,8 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const feats = [
       ...(pts.length > 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: sectorRings(pts, holes) } }] : []),
       ...(pts.length > 1 && pts.length < 3 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] : []),
-      ...(poly ? [] : (mode === 'hole' ? holePts : pts).map((p) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } }))),
+      ...(poly ? [] : (mode === 'hole' ? holePts : pts).map((p, i) => ({ type: 'Feature', properties: { k: 'v', on: i === dragIdx }, geometry: { type: 'Point', coordinates: p } }))),
+      ...(poly || finger || dragIdx >= 0 ? [] : midpoints(mode === 'hole' ? holePts : pts).map((p) => ({ type: 'Feature', properties: { k: 'm' }, geometry: { type: 'Point', coordinates: p } }))),
     ];
     const hf = [
       ...holes.map((h) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...h, h[0]]] } })),
@@ -196,7 +243,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const put = () => { map.getSource('draw')?.setData(fc(feats)); map.getSource('holes')?.setData(fc(hf)); };
     if (src) put();
     else map?.once('style.load', put);
-  }, [points, poly, holes, holePts, mode]);
+  }, [points, poly, holes, holePts, mode, dragIdx, finger]);
 
   // Tracé au doigt : un trait continu devient le contour (ou une zone retirée).
   useEffect(() => {
@@ -357,6 +404,16 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     mapRef.current?.getSource('fdoors')?.setData(fc([]));
   }
 
+  // Revenir au tracé en gardant le contour, pour déplacer un point.
+  function adjust() {
+    abort.current?.abort();
+    polyRef.current = null;
+    setPoints(poly || points); setPoly(null); setResult(null); setFinger(false); setMode('outer'); setStage('draw'); stageRef.current = 'draw'; setRadar(null); setWhole(false);
+    const map = mapRef.current;
+    for (const k of ['fstreets', 'fdoors', 'fnew', 'froute', 'mask']) map?.getSource(k)?.setData(fc([]));
+    feel('tap');
+  }
+
   function create() {
     const r = result || { streets: [], network: [], doors: [] };
     const area = r.streets.length ? [...r.doors.reduce((m, d) => m.set(d.street, (m.get(d.street) || 0) + 1), new Map()).entries()].sort((a, b) => b[1] - a[1])[0]?.[0] : '';
@@ -415,7 +472,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
             ) : auto?.done ? (
               <div class="creator-hint" role="status" data-testid="auto-status">
                 <Icon name="sparkle" />
-                <span>Zone tracée d'après le plan{auto.city ? <> · {auto.city}</> : null} · <b>{auto.found.length} rue{auto.found.length > 1 ? 's' : ''}</b>. Vérifiez, ajustez au doigt si besoin, puis <b>Terminer</b>.</span>
+                <span>Zone tracée d'après le plan{auto.city ? <> · {auto.city}</> : null} · <b>{auto.found.length} rue{auto.found.length > 1 ? 's' : ''}</b>. Vérifiez, glissez un point pour l'ajuster, puis <b>Terminer</b>.</span>
               </div>
             ) : null}
             {auto?.done && auto.plan?.secteurs?.length > 1 && (
@@ -444,7 +501,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
             ) : (
               <div class="creator-hint">
                 <Icon name="draw" />
-                <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Encore des coins, ou <b>Terminer</b></>}</span>
+                <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Glissez un point pour l'ajuster, ou <b>Terminer</b></>}</span>
               </div>
             )}
           </div>
@@ -526,7 +583,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
                 </div>
               ) : (
                 <>
-                  <div class="hrow between"><h2>C'est trouvé</h2><button class="link-btn" onClick={redraw}>Retracer</button></div>
+                  <div class="hrow between"><h2>C'est trouvé</h2><span class="hrow"><button class="link-btn" onClick={adjust} data-testid="adjust">Ajuster le contour</button><button class="link-btn" onClick={redraw}>Retracer</button></span></div>
                   <div class="found">
                     <div><div class="big-num"><CountUp value={result.doors.length} /></div><div class="tiny muted">portes</div></div>
                     <div><div class="big-num"><CountUp value={units} /></div><div class="tiny muted">logements{buildings ? ` · ${buildings} imm.` : ''}</div></div>
@@ -563,6 +620,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
               <div class="stack s8">
                 <Button kind="full" icon="repeat" onClick={() => dig(poly)}>Réessayer</Button>
                 <Button kind="soft full" onClick={create} data-testid="create-sector">Créer sans les adresses</Button>
+                <button class="link-btn center" onClick={adjust}>Ajuster le contour</button>
                 <button class="link-btn center" onClick={redraw}>Retracer la zone</button>
               </div>
             </>

@@ -174,3 +174,65 @@ test('tracer au doigt et retirer une zone où on ne passe pas', async ({ page })
   const inHole = (p, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) c = !c; } return c; };
   expect(res.doors.filter((p) => inHole(p, res.holes[0]))).toEqual([]);
 });
+
+test('déplacer un point du contour, en ajouter un, et revenir ajuster après la recherche', async ({ page }) => {
+  await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await page.route(/data\.geopf\.fr/, (r) => r.abort());
+  await page.route(/overpass|interpreter/, async (r) => {
+    const fs = await import('node:fs');
+    r.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync('tests/fixtures/overpass.json', 'utf8') });
+  });
+  await page.goto('/');
+  await page.getByTestId('no-account').click();
+  await page.getByTestId('create-team').click();
+  await page.locator('#oname1').fill('Lucas Martin');
+  await page.getByTestId('ob-next').click();
+  await page.locator('#ocity1').fill('Rezé');
+  await page.getByTestId('ob-next').click();
+  await page.getByTestId('ob-next').click();
+  await page.locator('#opartner').fill('Inès Diallo');
+  for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
+  await skipIntro(page);
+  await page.getByTestId('new-sector').click();
+  await page.waitForFunction(() => !!window.__nokkCreatorMap);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__nokkCreatorMap.jumpTo({ center: [-1.5516, 47.1786], zoom: 16 }));
+  await page.waitForTimeout(400);
+  const box = await page.getByTestId('creator-map').boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  const R = Math.min(120, box.width / 2 - 40);
+  const corners = [[cx, cy - R], [cx + R, cy + R * 0.7], [cx - R, cy + R * 0.7]];
+  for (const [x, y] of corners) await page.mouse.click(x, y);
+  const verts = () => page.evaluate(() => window.__nokkCreatorMap.getSource('draw').serialize().data.features.filter((f) => f.properties.k === 'v').map((f) => f.geometry.coordinates));
+  await expect.poll(async () => (await verts()).length).toBe(3);
+  const before = await verts();
+  const center0 = await page.evaluate(() => window.__nokkCreatorMap.getCenter().toArray());
+
+  // On glisse le premier coin vers la droite : il bouge, la carte non.
+  await page.mouse.move(corners[0][0], corners[0][1]);
+  await page.mouse.down();
+  for (let k = 1; k <= 8; k++) await page.mouse.move(corners[0][0] + k * 8, corners[0][1]);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  const after = await verts();
+  expect(after.length).toBe(3);
+  expect(after[0][0]).toBeGreaterThan(before[0][0]);
+  expect(after[1]).toEqual(before[1]);
+  expect(await page.evaluate(() => window.__nokkCreatorMap.getCenter().toArray())).toEqual(center0);
+
+  // Le petit point au milieu d'un côté devient un nouveau coin.
+  const mid = [(corners[1][0] + corners[2][0]) / 2, corners[1][1]];
+  await page.mouse.move(mid[0], mid[1]);
+  await page.mouse.down();
+  for (let k = 1; k <= 6; k++) await page.mouse.move(mid[0], mid[1] + k * 6);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  expect((await verts()).length).toBe(4);
+
+  // Après la recherche, « Ajuster le contour » revient au tracé avec les mêmes points.
+  await page.getByTestId('draw-done').click();
+  await expect(page.locator('.found')).toBeVisible({ timeout: 15000 });
+  await page.getByTestId('adjust').click();
+  await expect(page.getByTestId('draw-done')).toBeEnabled();
+  await expect.poll(async () => (await verts()).length).toBe(4);
+});
