@@ -108,3 +108,21 @@ export function formatDistance(m) {
   if (m < 1000) return `${Math.max(5, Math.round(m / 5) * 5)} m`;
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
+
+// Aire signée (sens du tracé) d'un anneau.
+export function ringArea(r) {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]);
+  return a / 2;
+}
+// Contour GeoJSON d'un secteur avec ses zones retirées (trous, tracés dans l'autre sens).
+export function sectorRings(outer, holes = []) {
+  const close = (r) => [...r, r[0]];
+  const o = ringArea(outer) < 0 ? [...outer].reverse() : outer;
+  const sign = Math.sign(ringArea(o));
+  return [close(o), ...(holes || []).filter((h) => h?.length > 2).map((h) => close(Math.sign(ringArea(h)) === sign ? [...h].reverse() : h))];
+}
+// Dans le secteur et hors de ses zones retirées.
+export function inSector(p, outer, holes = []) {
+  return pointInPolygon(p, outer) && !(holes || []).some((h) => h?.length > 2 && pointInPolygon(p, h));
+}

@@ -29,6 +29,14 @@ async function geocode(params, signal) {
   return f ? { p: f.geometry.coordinates, ...f.properties } : null;
 }
 
+// Le géocodeur trouve toujours quelque chose : on vérifie que le nom ressemble vraiment à celui lu.
+export function alike(a, b) {
+  const x = norm(a).split(' ').filter(Boolean), y = new Set(norm(b).split(' ').filter(Boolean));
+  if (!x.length || !y.size) return 0;
+  const near = (w) => [...y].some((v) => v === w || (w.length > 4 && v.length > 4 && (v.startsWith(w.slice(0, -1)) || w.startsWith(v.slice(0, -1)))));
+  return x.filter(near).length / Math.max(x.length, y.size);
+}
+
 const distM = (a, b) => Math.hypot((a[0] - b[0]) * 111320 * Math.cos((a[1] * Math.PI) / 180), (a[1] - b[1]) * 110540);
 
 export function hull(pts) {
@@ -86,7 +94,7 @@ export async function traceFromPlan(plan, { near, signal, onStep = () => {} } = 
   const streets = await Promise.all(names.map((n) => geocode({ q: n + (plan.ville ? ' ' + plan.ville : ''), type: 'street', ...inCity, ...around }, signal).catch(() => null)));
   const found = [], missing = [], keep = [];
   streets.forEach((s, i) => {
-    if (s && (s.score ?? 1) > 0.45 && distM(s.p, center) < 9000) { found.push(s.name); keep.push(s); }
+    if (s && alike(names[i], s.name) >= 0.5 && distM(s.p, center) < 9000) { found.push(s.name); keep.push(s); }
     else missing.push(names[i]);
   });
   const addrs = await Promise.all((plan.adresses || []).slice(0, 12).map((q) => geocode({ q: q + (plan.ville ? ' ' + plan.ville : ''), type: 'housenumber', ...inCity, ...around }, signal).catch(() => null)));

@@ -1,5 +1,5 @@
 // Transforme une réponse Overpass (OpenStreetMap) en rues, réseau piéton et portes.
-import { pointInPolygon, bbox, nearestOnLine } from './geo.js';
+import { bbox, nearestOnLine, inSector } from './geo.js';
 import { fetchIgn } from './ign.js';
 
 export const OVERPASS = [
@@ -72,9 +72,10 @@ const id = (p, i) => p + i.toString(36);
 /**
  * @param {{elements: any[]}} json
  * @param {Array<[number,number]>|null} poly  contour du secteur ; null = tout garder
+ * @param {Array<Array<[number,number]>>} holes  zones retirées (on n'y passe pas)
  */
-export function processOsm(json, poly = null) {
-  const inside = (p) => !poly || pointInPolygon(p, poly);
+export function processOsm(json, poly = null, holes = []) {
+  const inside = (p) => !poly || inSector(p, poly, holes);
   const ways = json.elements.filter((e) => e.type === 'way' && e.tags?.highway && e.geometry && WALKABLE.test(e.tags.highway));
 
   // Réseau : toutes les voies praticables à pied (sert au calcul d'itinéraire).
