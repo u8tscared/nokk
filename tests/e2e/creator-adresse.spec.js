@@ -152,8 +152,7 @@ test('tracer au doigt et retirer une zone où on ne passe pas', async ({ page })
   for (const [dx, dy] of [[-40, -40], [40, -40], [40, 40], [-40, 40]]) await page.mouse.click(cx + dx, cy + dy);
   await page.getByTestId('hole-done').click();
   await expect(page.getByTestId('undo-hole')).toBeVisible();
-  const hole = await page.evaluate(() => window.__nokkCreatorMap.getSource('draw').serialize().data.features.find((f) => f.geometry.type === 'Polygon').geometry.coordinates);
-  expect(hole.length).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__nokkCreatorMap.getSource('draw').serialize().data.features.find((f) => f.geometry.type === 'Polygon')?.geometry.coordinates.length)).toBe(2);
 
   await page.getByTestId('draw-done').click();
   await expect(page.locator('.found')).toBeVisible({ timeout: 15000 });
