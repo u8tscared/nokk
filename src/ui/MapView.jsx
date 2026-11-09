@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { buildStyle, overlayLayers, tokens } from '../lib/mapstyle.js';
 import { data, currentSector, position, demo, memberById } from '../lib/store.js';
 import { doorStates, route, nextDoor, streetFeatures, guidePath } from '../lib/tour.js';
-import { bbox } from '../lib/geo.js';
+import { bbox, sectorRings } from '../lib/geo.js';
 
 export const follow = signal(false);
 export const showRoute = signal(true);
@@ -31,7 +31,7 @@ function sourcesData() {
   const states = doorStates.value;
   const sectors = fc(d.sectors.filter((s) => s.polygon?.length > 2).map((s) => ({
     type: 'Feature', properties: { id: s.id, current: s.id === cur?.id },
-    geometry: { type: 'Polygon', coordinates: [[...s.polygon, s.polygon[0]]] },
+    geometry: { type: 'Polygon', coordinates: sectorRings(s.polygon, s.holes) },
   })));
   const doors = fc(d.doors.filter((x) => x.sectorId === cur?.id).map((x) => ({
     type: 'Feature', properties: { id: x.id, num: x.num, state: states.get(x.id)?.state || 'todo' },

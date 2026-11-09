@@ -8,12 +8,13 @@ import { buildStyle, tokens } from '../lib/mapstyle.js';
 import { data, addSector, position, currentSector } from '../lib/store.js';
 import { fetchOverpass, processOsm } from '../lib/osm.js';
 import { planRoute } from '../lib/route.js';
-import { bbox, centroid, projector } from '../lib/geo.js';
+import { bbox, centroid, projector, sectorRings } from '../lib/geo.js';
 import { openSheet, closeAllSheets, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { startGeo } from '../lib/geoloc.js';
 import { searchAddress, houseNumbers } from '../lib/adresse.js';
+import { readPlanPhoto, traceFromPlan, simplify } from '../lib/plan.js';
 
 const fc = (features) => ({ type: 'FeatureCollection', features });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -60,6 +61,44 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   const [crew, setCrew] = useState(data.value.crew?.length ? data.value.crew : [data.value.meId].filter(Boolean));
   const abort = useRef();
   const pin = useRef(null);
+  // Zones retirées (on n'y passe pas) et tracé au doigt.
+  const [holes, setHoles] = useState([]);
+  const [holePts, setHolePts] = useState([]);
+  const [mode, setMode] = useState('outer'); // outer | hole
+  const [finger, setFinger] = useState(false);
+  const modeRef = useRef(mode); modeRef.current = mode;
+  const fingerRef = useRef(finger); fingerRef.current = finger;
+  const [whole, setWhole] = useState(false); // contour posé d'un coup (doigt ou photo) : « Effacer » plutôt que « Retirer »
+  const strokeEnd = useRef(0);
+  const [auto, setAuto] = useState(null); // null | { step } | { done, found, missing, city } | { error }
+  const autoCtrl = useRef(null);
+
+  // Photo du plan : Nokk lit les rues et la ville, puis trace la zone tout seul.
+  async function autoTrace(img) {
+    autoCtrl.current?.abort();
+    const c = (autoCtrl.current = new AbortController());
+    setShowPhoto(false);
+    setAuto({ step: 'lecture' });
+    try {
+      const plan = await readPlanPhoto(img, { signal: c.signal });
+      if (c.signal.aborted) return;
+      const m = mapRef.current;
+      const near = m && m.getZoom() > 11 ? m.getCenter().toArray() : position.value?.p;
+      const r = await traceFromPlan(plan, { near, signal: c.signal, onStep: (step) => !c.signal.aborted && setAuto({ step }) });
+      if (c.signal.aborted || stageRef.current !== 'draw') return;
+      setPoints(r.points);
+      setWhole(true);
+      feel('done');
+      const xs = r.points.map((q) => q[0]), ys = r.points.map((q) => q[1]);
+      m?.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { top: 150, bottom: 170, left: 40, right: 40 }, duration: 900, maxZoom: 17.5 });
+      setAuto({ done: true, found: r.found, missing: r.missing, city: r.city });
+    } catch (e) {
+      if (e?.name === 'AbortError' || c.signal.aborted) return;
+      setAuto({ error: e?.code || 'error' });
+      setShowPhoto(true);
+    }
+  }
+  useEffect(() => { if (initialPhoto) autoTrace(initialPhoto); return () => autoCtrl.current?.abort(); }, []);
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
@@ -93,12 +132,22 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       map.addLayer({ id: 'fnew', type: 'circle', source: 'fnew', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 13], 'circle-color': t.coral, 'circle-opacity': 0.35, 'circle-stroke-color': t.coral, 'circle-stroke-width': 2, 'circle-stroke-opacity': 0.8 } });
       map.addSource('housenums', { type: 'geojson', data: fc([]) });
       map.addLayer({ id: 'housenums', type: 'symbol', source: 'housenums', minzoom: 15.8, layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 16, 10, 18, 13], 'text-padding': 1, 'text-allow-overlap': false }, paint: { 'text-color': t.ink, 'text-halo-color': t.paper, 'text-halo-width': 1.6, 'text-opacity': 0.8 } });
+      map.addSource('holes', { type: 'geojson', data: fc([]) });
+      map.addSource('stroke', { type: 'geojson', data: fc([]) });
+      map.addLayer({ id: 'holes-fill', type: 'fill', source: 'holes', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': t.ink, 'fill-opacity': 0.22 } });
+      map.addLayer({ id: 'holes-line', type: 'line', source: 'holes', filter: ['!=', ['geometry-type'], 'Point'], paint: { 'line-color': t.ink, 'line-width': 2, 'line-dasharray': [2, 1.5] } });
+      map.addLayer({ id: 'stroke', type: 'line', source: 'stroke', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.coral, 'line-width': 4, 'line-opacity': 0.9 } });
       map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': t.paper, 'circle-stroke-color': t.coral, 'circle-stroke-width': 3 } });
     });
     map.on('click', (e) => {
       if (stageRef.current !== 'draw') return;
+      if (fingerRef.current) return;
+      if (strokeEnd.current && Date.now() - strokeEnd.current < 400) { strokeEnd.current = 0; return; }
+      if (modeRef.current !== 'hole') setWhole(false);
       feel('tick');
-      setPoints((pts) => [...pts, [e.lngLat.lng, e.lngLat.lat]]);
+      const p = [e.lngLat.lng, e.lngLat.lat];
+      if (modeRef.current === 'hole') setHolePts((h) => [...h, p]);
+      else setPoints((pts) => [...pts, p]);
     });
     map.on('move', () => placeRadar());
     // Numéros de rue pour se repérer, dès qu'on est assez près.
@@ -124,13 +173,65 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const src = map?.getSource('draw');
     const pts = poly || points;
     const feats = [
-      ...(pts.length > 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...pts, pts[0]]] } }] : []),
+      ...(pts.length > 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: sectorRings(pts, holes) } }] : []),
       ...(pts.length > 1 && pts.length < 3 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] : []),
-      ...(poly ? [] : pts.map((p) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } }))),
+      ...(poly ? [] : (mode === 'hole' ? holePts : pts).map((p) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } }))),
     ];
-    if (src) src.setData(fc(feats));
-    else map?.once('style.load', () => map.getSource('draw')?.setData(fc(feats)));
-  }, [points, poly]);
+    const hf = [
+      ...holes.map((h) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...h, h[0]]] } })),
+      ...(holePts.length > 1 ? [{ type: 'Feature', properties: {}, geometry: holePts.length > 2 ? { type: 'Polygon', coordinates: [[...holePts, holePts[0]]] } : { type: 'LineString', coordinates: holePts } }] : []),
+    ];
+    const put = () => { map.getSource('draw')?.setData(fc(feats)); map.getSource('holes')?.setData(fc(hf)); };
+    if (src) put();
+    else map?.once('style.load', put);
+  }, [points, poly, holes, holePts, mode]);
+
+  // Tracé au doigt : un trait continu devient le contour (ou une zone retirée).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !finger) return;
+    map.dragPan.disable();
+    const el = map.getCanvasContainer();
+    let stroke = null, last = null;
+    const ll = (e) => { const r = el.getBoundingClientRect(); const px = [e.clientX - r.left, e.clientY - r.top]; return [px, map.unproject(px).toArray()]; };
+    const show = () => map.getSource('stroke')?.setData(fc(stroke && stroke.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: stroke } }] : []));
+    const down = (e) => {
+      if (!fingerRef.current || e.isPrimary === false || stageRef.current !== 'draw') return;
+      const [px, p] = ll(e);
+      stroke = [p]; last = px;
+      el.setPointerCapture?.(e.pointerId);
+    };
+    const move = (e) => {
+      if (!stroke) return;
+      const [px, p] = ll(e);
+      if (Math.hypot(px[0] - last[0], px[1] - last[1]) < 6) return;
+      stroke.push(p); last = px; show();
+    };
+    const up = () => {
+      if (!stroke) return;
+      const s = stroke; stroke = null; show();
+      strokeEnd.current = Date.now();
+      if (s.length < 6) return;
+      const ring = simplify(s, 40);
+      if (ring.length < 3) return;
+      feel('tick');
+      if (modeRef.current === 'hole') { setHoles((h) => [...h, ring]); setHolePts([]); setMode('outer'); }
+      else { setPoints(ring); setAuto(null); setWhole(true); }
+      setFinger(false);
+    };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    return () => {
+      el.removeEventListener('pointerdown', down);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      map.dragPan.enable();
+      stroke = null; show();
+    };
+  }, [finger]);
 
   function placeRadar(p = polyRef.current) {
     const map = mapRef.current;
@@ -153,7 +254,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     setHud({ n: 0, label: 'On fouille le plan…' });
     for (const k of ['fstreets', 'fdoors', 'fnew', 'froute']) map?.getSource(k)?.setData(fc([]));
     // Tout s'assombrit sauf la zone : on voit où ça cherche.
-    map?.getSource('mask')?.setData(fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], [...pg, pg[0]].slice().reverse()] } }]));
+    map?.getSource('mask')?.setData(fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], [...pg, pg[0]].slice().reverse()] } }, ...holes.map((h) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...h, h[0]]] } }))]));
     feel('scan');
     const b = bbox(pg);
     map?.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: innerWidth >= 960 ? { top: 80, bottom: 80, left: 80, right: 440 } : { top: 80, bottom: 250, left: 36, right: 36 }, duration: 700, maxZoom: 17 });
@@ -163,7 +264,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const t0 = performance.now();
     try {
       const json = await fetchOverpass(pg, { signal: abort.current.signal });
-      const r = processOsm(json, pg);
+      const r = processOsm(json, pg, holes);
       // On laisse le temps de voir que ça cherche.
       await wait(Math.max(0, 1600 - (performance.now() - t0)));
       // 1 · les rues se dessinent une par une
@@ -239,7 +340,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   function redraw() {
     abort.current?.abort();
     polyRef.current = null;
-    setPoly(null); setPoints([]); setResult(null); setStage('draw'); stageRef.current = 'draw'; setRadar(null);
+    setPoly(null); setPoints([]); setHoles([]); setHolePts([]); setMode('outer'); setFinger(false); setResult(null); setStage('draw'); stageRef.current = 'draw'; setRadar(null);
     mapRef.current?.getSource('fstreets')?.setData(fc([]));
     mapRef.current?.getSource('fdoors')?.setData(fc([]));
   }
@@ -250,7 +351,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const s = addSector({
       name: name.trim() || `Secteur ${n}`,
       area: (area || '').replace(/^(Rue|Avenue|Chemin|Place|Impasse|Allée|Boulevard) (de la |des |du |de l'|de )?/i, ''),
-      polygon: poly, streets: r.streets, network: r.network, assignees: crew, photos: photo ? [photo] : [], source: 'osm',
+      polygon: poly, ...(holes.length ? { holes } : {}), streets: r.streets, network: r.network, assignees: crew, photos: photo ? [photo] : [], source: 'osm',
     }, r.doors);
     feel('done');
     confetti();
@@ -294,10 +395,37 @@ export function SectorCreator({ close, photo: initialPhoto }) {
               pin.current = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(r.p).addTo(map);
               map.flyTo({ center: r.p, zoom: r.kind === 'municipality' ? 14.5 : r.kind === 'street' ? 16.5 : 17.6, duration: 900 });
             }} />
-            <div class="creator-hint">
-              <Icon name="draw" />
-              <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Encore des coins, ou <b>Terminer</b></>}</span>
-            </div>
+            {auto && !auto.done && !auto.error ? (
+              <div class="creator-hint auto-busy" role="status" data-testid="auto-status">
+                <span class="auto-spin" />
+                <span>{AUTO_STEPS[auto.step] || 'Je lis le plan…'}</span>
+              </div>
+            ) : auto?.done ? (
+              <div class="creator-hint" role="status" data-testid="auto-status">
+                <Icon name="sparkle" />
+                <span>Zone tracée d'après le plan{auto.city ? <> · {auto.city}</> : null} · <b>{auto.found.length} rue{auto.found.length > 1 ? 's' : ''}</b>{auto.missing.length > 0 && <> · pas trouvé : {auto.missing.slice(0, 3).join(', ')}</>}. Vérifiez puis <b>Terminer</b>.</span>
+              </div>
+            ) : auto?.error ? (
+              <div class="creator-hint" role="status" data-testid="auto-status">
+                <Icon name="photo" />
+                <span>{AUTO_ERR[auto.error] || "Je n'ai pas réussi à lire ce plan."} Tracez la zone en regardant la photo.</span>
+              </div>
+            ) : mode === 'hole' ? (
+              <div class="creator-hint hole" data-testid="hole-hint">
+                <Icon name="minus" />
+                <span>{finger ? <>Entourez au doigt la zone où vous ne passez pas</> : <>Touchez les coins de la zone où vous ne passez pas · <b>{holePts.length}/3</b></>}</span>
+              </div>
+            ) : finger ? (
+              <div class="creator-hint">
+                <Icon name="pencil" />
+                <span>Dessinez le contour de votre zone d'un seul trait</span>
+              </div>
+            ) : (
+              <div class="creator-hint">
+                <Icon name="draw" />
+                <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Encore des coins, ou <b>Terminer</b></>}</span>
+              </div>
+            )}
           </div>
         )}
         {stage !== 'draw' && <div class="grow" />}
@@ -309,30 +437,49 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       {stage === 'draw' && (
         <div class="creator-bottom">
           <div class="creator-tools" data-free>
-            {radius ? (
+            {mode === 'hole' ? (
+              <>
+                <button class="chip" aria-pressed={finger} data-testid="finger" onClick={() => setFinger(!finger)}><Icon name="pencil" size={18} /> {finger ? 'Au doigt · activé' : 'Au doigt'}</button>
+                <button class="chip" onClick={() => { setMode('outer'); setHolePts([]); setFinger(false); }}>Annuler</button>
+              </>
+            ) : radius ? (
               <>
                 {[150, 250, 400].map((r) => <button class="chip" key={r} onClick={() => { setRadius(false); aroundMe(r); }}>{r} m autour de moi</button>)}
                 <button class="chip" onClick={() => setRadius(false)}>Annuler</button>
               </>
             ) : (
               <>
+                <button class="chip" aria-pressed={finger} data-testid="finger" onClick={() => setFinger(!finger)}><Icon name="pencil" size={18} /> {finger ? 'Au doigt · activé' : 'Au doigt'}</button>
+                {pts > 2 && <button class="chip" data-testid="add-hole" onClick={() => { setMode('hole'); setHolePts([]); setFinger(false); feel('tap'); }}><Icon name="minus" size={18} /> Retirer une zone</button>}
+                {holes.length > 0 && <button class="chip" data-testid="undo-hole" onClick={() => setHoles(holes.slice(0, -1))}><Icon name="repeat" size={18} /> Remettre la zone retirée{holes.length > 1 ? ` (${holes.length})` : ''}</button>}
                 <button class="chip" onClick={() => setRadius(true)}><Icon name="locate" size={18} /> Autour de moi</button>
                 <label class="chip" for="cphoto"><Icon name="photo" size={18} /> Photo du plan</label>
                 <button class="chip" onClick={async () => { close(); const { openImportList } = await import('./SectorNew.jsx'); setTimeout(openImportList, 320); }}><Icon name="list" size={18} /> Liste d'adresses</button>
               </>
             )}
             <input id="cphoto" type="file" accept="image/*" hidden onChange={async (e) => {
-              const f = e.currentTarget.files?.[0];
+              const input = e.currentTarget;
+              const f = input.files?.[0];
               if (!f) return;
               const { shrink } = await import('./SectorNew.jsx');
-              setPhoto(await shrink(f)); setShowPhoto(true);
-              toast('Photo ajoutée · tracez la zone en la regardant');
+              input.value = '';
+              const img = await shrink(f);
+              setPhoto(img);
+              setPoints([]);
+              autoTrace(img);
             }} />
           </div>
+          {mode === 'hole' ? (
           <div class="creator-bar">
-            <Button kind="ghost small" icon="back" disabled={!pts} onClick={() => setPoints(points.slice(0, -1))}>Retirer</Button>
+            <Button kind="ghost small" icon="back" disabled={!holePts.length} onClick={() => setHolePts(holePts.slice(0, -1))}>Retirer</Button>
+            <Button kind="coral small" disabled={holePts.length < 3} data-testid="hole-done" onClick={() => { setHoles([...holes, holePts]); setHolePts([]); setMode('outer'); feel('tick'); }}>Valider la zone retirée</Button>
+          </div>
+          ) : (
+          <div class="creator-bar">
+            <Button kind="ghost small" icon="back" disabled={!pts} onClick={() => { if (whole) { setPoints([]); setHoles([]); setAuto(null); setWhole(false); } else setPoints(points.slice(0, -1)); }}>{whole ? 'Effacer' : 'Retirer'}</Button>
             <Button kind="coral small" disabled={pts < 3} onClick={() => dig(points)} data-testid="draw-done">Terminer</Button>
           </div>
+          )}
         </div>
       )}
 
@@ -404,6 +551,9 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     </div>
   );
 }
+
+const AUTO_STEPS = { lecture: 'Je lis le plan…', ville: 'Je cherche la ville…', rues: 'Je retrouve les rues…', numeros: 'Je trace la zone…' };
+const AUTO_ERR = { network: "Pas de réseau pour lire le plan.", unreadable: "Je n'arrive pas à lire les rues sur cette photo.", no_city: "Je ne trouve pas la ville du plan.", no_street: "Je ne retrouve pas ces rues sur la carte.", bad_image: "Cette photo n'est pas lisible." };
 
 // Recherche d'une adresse, d'une rue ou d'une commune pour aller tracer au bon endroit.
 function AddressSearch({ map, onPick }) {
