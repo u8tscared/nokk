@@ -161,3 +161,47 @@ export function streetSummary(sector) {
 }
 
 export { nearestOnLine };
+
+// ——— Arrêts : une maison ou un immeuble ———
+// Arrêts encore à faire (jamais vus, immeuble commencé, ou absents à repasser).
+export function openStops() {
+  const states = doorStates.value;
+  return sectorDoors.value.filter((d) => {
+    const st = states.get(d.id)?.state || 'todo';
+    return st === 'todo' || st === 'partiel' || (repasserMode.value && st === 'absent');
+  });
+}
+
+// Point de départ pour mesurer : ma position si elle est fraîche, sinon la porte où l'on est.
+export function hereFrom(door) {
+  const pos = position.value;
+  if (pos && Date.now() - pos.ts < 120000) return { p: pos.p, live: true };
+  return door ? { p: door.p, live: false } : null;
+}
+
+export function nearestStops(from, { exclude = [], limit = 4 } = {}) {
+  if (!from) return [];
+  const ex = new Set(exclude);
+  return openStops()
+    .filter((d) => !ex.has(d.id))
+    .map((d) => ({ door: d, m: dist(from, d.p) }))
+    .sort((a, b) => a.m - b.m)
+    .slice(0, limit);
+}
+
+// Que faire après cet arrêt : le suivant du parcours, et le plus proche s'il vaut le détour.
+export function whereNext(doorId) {
+  const door = sectorDoors.value.find((d) => d.id === doorId);
+  const here = hereFrom(door);
+  const onRoute = doorAfter(doorId);
+  const near = nearestStops(here?.p, { exclude: [doorId], limit: 6 });
+  const routeM = onRoute && here ? dist(here.p, onRoute.p) : null;
+  const closest = near[0] || null;
+  const better = closest && onRoute && closest.door.id !== onRoute.id && routeM - closest.m > 40 && closest.m < routeM * 0.6 ? closest : null;
+  return {
+    here,
+    route: onRoute ? { door: onRoute, m: routeM } : null,
+    closest: better,
+    others: near.filter((x) => x.door.id !== onRoute?.id && x.door.id !== better?.door.id).slice(0, 4),
+  };
+}

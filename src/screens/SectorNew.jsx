@@ -10,18 +10,11 @@ import { openSheet, closeAllSheets, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { startGeo } from '../lib/geoloc.js';
+import { openCreator } from './SectorCreator.jsx';
 
 let pendingPhotos = [];
 
-export function startDrawing() {
-  closeAllSheets();
-  go('carte');
-  drawing.value = { points: [] };
-  setTimeout(() => {
-    const p = position.value?.p;
-    if (p && mapInstance) mapInstance.easeTo({ center: p, zoom: 16.2 });
-  }, 200);
-}
+export function startDrawing() { openCreator(); }
 
 export function DrawBar() {
   const pts = drawing.value.points;
@@ -147,66 +140,10 @@ function NewSector({ polygon, close, preset }) {
   );
 }
 
-// ——— Création : choix de la méthode ———
-export function openCreateChooser() {
-  openSheet(({ close }) => <CreateChooser close={close} />, { label: 'Nouveau secteur' });
-}
-
-function CreateChooser({ close }) {
-  const fileRef = useRef();
-  const [radius, setRadius] = useState(null);
-  async function aroundMe(r) {
-    let p = position.value?.p;
-    if (!p) {
-      const ok = await startGeo();
-      p = position.value?.p;
-      if (!ok || !p) { toast('Position introuvable. Tracez la zone sur la carte à la place.', { error: true }); return; }
-    }
-    const P = projector(p);
-    const poly = Array.from({ length: 16 }, (_, i) => P.from([Math.cos((i / 16) * Math.PI * 2) * r, Math.sin((i / 16) * Math.PI * 2) * r]));
-    close();
-    setTimeout(() => openNewSector(poly), 320);
-  }
-  return (
-    <div class="stack">
-      <div class="sheet-head"><h2>Nouveau secteur</h2></div>
-      <p class="small muted">Nokk trouve tout seul les rues, les numéros et le meilleur parcours.</p>
-      <div class="list card tight">
-        <button class="row" onClick={startDrawing} data-testid="draw-sector">
-          <DotIcon icon="draw" />
-          <span class="grow"><span class="t">Tracer ma zone sur la carte</span><span class="s">Touchez les coins, c'est tout</span></span>
-          <Icon name="chevR" class="chev" />
-        </button>
-        <button class="row" onClick={() => setRadius(radius ? null : 1)}>
-          <DotIcon icon="locate" tone="info" />
-          <span class="grow"><span class="t">Autour de ma position</span><span class="s">Un cercle de 150 à 400 m</span></span>
-          <Icon name={radius ? 'chevD' : 'chevR'} class="chev" />
-        </button>
-        {radius && (
-          <div class="chips" style={{ padding: '4px 12px 12px' }}>
-            {[150, 250, 400].map((r) => <button class="chip" key={r} onClick={() => aroundMe(r)}>{r} m</button>)}
-          </div>
-        )}
-        <button class="row" onClick={() => { close(); setTimeout(() => openSheet(({ close: c }) => <ImportList close={c} />, { label: 'Importer une liste' }), 320); }}>
-          <DotIcon icon="list" tone="coral" />
-          <span class="grow"><span class="t">Importer une liste d'adresses</span><span class="s">Copiée d'un tableau ou d'un mail</span></span>
-          <Icon name="chevR" class="chev" />
-        </button>
-        <label class="row" for="planphoto">
-          <DotIcon icon="photo" tone="warn" />
-          <span class="grow"><span class="t">J'ai reçu une photo du plan</span><span class="s">Gardez-la sous les yeux pendant le tracé</span></span>
-          <Icon name="chevR" class="chev" />
-        </label>
-        <input id="planphoto" ref={fileRef} type="file" accept="image/*" hidden onChange={async (e) => {
-          const f = e.currentTarget.files?.[0];
-          if (!f) return;
-          pendingPhotos = [await shrink(f)];
-          toast('Photo ajoutée · tracez maintenant la zone');
-          startDrawing();
-        }} />
-      </div>
-    </div>
-  );
+// ——— Création : tout se passe dans le créateur (carte dans la fenêtre) ———
+export function openCreateChooser() { openCreator(); }
+export function openImportList() {
+  openSheet(({ close }) => <ImportList close={close} />, { label: 'Importer une liste' });
 }
 
 export async function shrink(file, max = 1400) {

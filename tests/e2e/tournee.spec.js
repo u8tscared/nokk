@@ -11,11 +11,14 @@ test('saisir un don puis un absent, avec annulation', async ({ page }) => {
   const sheet = page.getByRole('dialog');
   await expect(sheet).toBeVisible();
   const title1 = await sheet.locator('h2').first().textContent();
-  await sheet.getByRole('button', { name: '20 €' }).click();
+  // Oui → montant → moyen → nom : le parcours d'une porte.
+  await sheet.getByTestId('yes').click();
+  await sheet.locator('.amount-tile').filter({ hasText: /^20 €/ }).click();
   await sheet.getByRole('button', { name: 'Chèque' }).click();
   // Chèque sans nom : le champ tremble et explique.
   await page.getByTestId('validate').click();
   await expect(page.locator('#dname')).toBeFocused();
+  await expect(page.locator('.toast.error')).toBeVisible();
   await page.locator('#dname').fill('Mme Dupont');
   await page.getByTestId('validate').click();
   await expect(page.locator('.toast').filter({ hasText: '20 € enregistrés' })).toBeVisible();
@@ -53,7 +56,7 @@ test('point caisse : compter, écart, remise au trésorier', async ({ page }) =>
   const fives = Math.floor(expected / 500);
   await page.getByLabel('Nombre de billets de 5 €').fill(String(fives));
   const diff = fives * 500 - expected;
-  await expect(page.locator('.reco')).toContainText(diff === 0 ? '0 €' : '€');
+  await expect(page.locator('.cash-bar')).toContainText(diff === 0 ? '0 €' : '€');
   const n = await page.evaluate(() => window.__nokk.store.data.value.handovers.length);
   await page.getByTestId('handover').click();
   await page.getByTestId('confirm-handover').click();
@@ -106,23 +109,56 @@ test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) 
   await page.getByTestId('ob-next').click(); // don
   await page.getByTestId('ob-next').click(); // écran d'accueil
   await expect(page.getByTestId('screen-secteurs')).toBeVisible();
+  // Le secteur se crée depuis l'écran Secteurs, carte dans la fenêtre.
   await page.getByTestId('new-sector').click();
-  await page.getByTestId('draw-sector').click();
-  await expect(page.getByTestId('screen-carte')).toBeVisible();
-  // Centre la carte sur la zone simulée puis pose 4 coins.
-  await page.evaluate(() => window.__nokkMap.jumpTo({ center: [-1.5516, 47.1786], zoom: 16 }));
-  const box = await page.locator('.map-box').boundingBox();
+  await expect(page.getByTestId('creator-map')).toBeVisible();
+  await page.waitForFunction(() => !!window.__nokkCreatorMap);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__nokkCreatorMap.jumpTo({ center: [-1.5516, 47.1786], zoom: 16 }));
+  await page.waitForTimeout(400);
+  const box = await page.getByTestId('creator-map').boundingBox();
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   for (const [dx, dy] of [[-150, -160], [150, -160], [150, 120], [-150, 120]]) {
     await page.mouse.click(cx + dx, cy + dy);
   }
   await page.getByTestId('draw-done').click();
-  await expect(page.locator('.found')).toBeVisible();
+  // On voit que Nokk cherche, puis ce qu'il a trouvé.
+  await expect(page.locator('.dig')).toBeVisible();
+  await expect(page.locator('.found')).toBeVisible({ timeout: 15000 });
   await page.getByTestId('create-sector').click();
+  await expect(page.getByTestId('screen-carte')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__nokk.store.data.value.doors.length)).toBeGreaterThan(5);
   // Les données sont gardées sur l'appareil (rechargement).
   await page.reload();
   await expect(page.getByTestId('screen-carte')).toBeVisible();
   expect(await page.evaluate(() => window.__nokk.store.data.value.sectors.length)).toBe(1);
   await expect(page.locator('[data-testid=next-door]:visible')).toBeVisible();
+});
+
+test('immeuble : les logements à la suite, puis changer de bâtiment', async ({ page }) => {
+  const errors = await startDemo(page);
+  const id = await page.evaluate(() => {
+    const d = window.__nokk.store.data.value;
+    return d.doors.find((x) => x.sectorId === d.currentSectorId && x.flats > 1 && !d.visits.some((v) => v.doorId === x.id)).id;
+  });
+  await page.evaluate((id) => window.__nokk.openDoor(id), id);
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.locator('#unit')).toHaveValue('1');
+  await sheet.getByRole('button', { name: 'Absent' }).click();
+  // On reste dans l'immeuble, logement suivant proposé.
+  await expect(sheet.locator('#unit')).toHaveValue('2');
+  await sheet.getByTestId('yes').click();
+  await sheet.locator('.amount-tile').filter({ hasText: /^10 €/ }).click();
+  await page.getByTestId('validate').click();
+  await expect(sheet.locator('#unit')).toHaveValue('3');
+  await expect(sheet.locator('.unit-chip')).toHaveCount(2);
+  const v = await page.evaluate((id) => window.__nokk.store.data.value.visits.filter((x) => x.doorId === id).map((x) => [x.unit, x.result]), id);
+  expect(v).toEqual([['1', 'absent'], ['2', 'donne']]);
+  // Changer de bâtiment : Nokk dit où aller.
+  await sheet.getByTestId('leave-building').click();
+  await expect(sheet.getByText('Où aller ensuite ?')).toBeVisible();
+  const before = await sheet.locator('.next-card.primary .t').textContent();
+  await sheet.getByTestId('go-next').click();
+  await expect(sheet.locator('h2').first()).toHaveText(before);
+  expect(errors).toEqual([]);
 });

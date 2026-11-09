@@ -2,6 +2,7 @@ import { render } from 'preact';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/screens.css';
+import './styles/v2.css';
 import { App } from './App.jsx';
 import { installRouter } from './lib/nav.js';
 import { installKeyboard } from './lib/keyboard.js';
@@ -36,4 +37,5 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 // Accès pour les tests automatiques et le débogage.
 import * as store from './lib/store.js';
 import * as nav from './lib/nav.js';
+import('./screens/DoorSheet.jsx').then((m) => { window.__nokk.openDoor = m.openDoor; });
 window.__nokk = { store, nav };
