@@ -2,14 +2,13 @@
 // 1. Le serveur lit la photo (ville, rues de la zone, adresses) ;
 // 2. on retrouve ces rues dans la Base Adresse Nationale ;
 // 3. la zone est l'enveloppe des numéros de ces rues, avec une petite marge.
-import { API_BASE } from './api.js';
 import { GEOCODE } from './adresse.js';
 import { getAll } from './ign.js';
 
 export async function readPlanPhoto(image, { signal } = {}) {
   let r;
   try {
-    r = await fetch(API_BASE + '/plan/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ image }), signal });
+    r = await fetch(((typeof window !== 'undefined' && window.__nokkApi) || 'https://nokk-api.marceau-ruis.workers.dev') + '/plan/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ image }), signal });
   } catch (e) {
     if (e?.name === 'AbortError') throw e;
     throw Object.assign(new Error('network'), { code: 'network' });
