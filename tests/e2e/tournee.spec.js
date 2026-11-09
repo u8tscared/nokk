@@ -162,3 +162,26 @@ test('immeuble : les logements à la suite, puis changer de bâtiment', async ({
   await expect(sheet.locator('h2').first()).toHaveText(before);
   expect(errors).toEqual([]);
 });
+
+test('maison : nom sur un absent, deux sonnettes, trajet vers la suivante', async ({ page }) => {
+  const errors = await startDemo(page);
+  await page.locator('[data-testid=next-door]:visible').click();
+  const sheet = page.getByRole('dialog');
+  const doorId = await page.evaluate(() => window.__nokk.store.data.value.doors.find((d) => d.num + ' ' + d.street === document.querySelector('.stop-head h2').textContent).id);
+  // Deux sonnettes : la maison passe en deux foyers.
+  await sheet.getByTestId('two-homes').click();
+  await expect(sheet.locator('#unit')).toHaveValue('1');
+  await sheet.getByTestId('ask-name').fill('Martin');
+  await sheet.getByRole('button', { name: 'Absent' }).click();
+  await expect(sheet.locator('#unit')).toHaveValue('2');
+  const v = await page.evaluate((id) => window.__nokk.store.data.value.visits.filter((x) => x.doorId === id).at(-1), doorId);
+  expect(v).toMatchObject({ result: 'absent', name: 'Martin', unit: '1' });
+  // Changer de bâtiment → Y aller : le trajet s'affiche sur la carte.
+  await sheet.getByTestId('leave-building').click();
+  await sheet.getByTestId('go-there').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByTestId('guide')).toBeVisible();
+  await page.getByTestId('arrived').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  expect(errors).toEqual([]);
+});

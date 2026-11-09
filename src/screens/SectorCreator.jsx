@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import maplibregl from 'maplibre-gl';
 import { Icon } from '../ui/icons.jsx';
-import { Button, IconButton, toast, Field, Avatar, confetti } from '../ui/ui.jsx';
+import { Button, IconButton, toast, Field, Avatar, confetti, Bump } from '../ui/ui.jsx';
 import { fitSector } from '../ui/MapView.jsx';
 import { buildStyle, tokens } from '../lib/mapstyle.js';
 import { data, addSector, position, currentSector } from '../lib/store.js';
@@ -39,7 +39,7 @@ function CountUp({ value, ms = 800 }) {
   return <>{v.toLocaleString('fr-FR')}</>;
 }
 
-const STEPS = ['Repérer les rues', 'Trouver les numéros', 'Calculer le parcours'];
+const STEPS = ['Fouiller le plan de la zone', 'Repérer les rues', 'Trouver les numéros', 'Calculer le parcours'];
 
 export function SectorCreator({ close, photo: initialPhoto }) {
   const box = useRef();
@@ -79,13 +79,16 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     map.on('style.load', () => {
       const others = fc(data.value.sectors.filter((s) => s.polygon?.length > 2).map((s) => ({ type: 'Feature', properties: { name: s.name }, geometry: { type: 'Polygon', coordinates: [[...s.polygon, s.polygon[0]]] } })));
       map.addSource('others', { type: 'geojson', data: others });
-      for (const k of ['draw', 'fstreets', 'fdoors']) map.addSource(k, { type: 'geojson', data: fc([]) });
+      for (const k of ['draw', 'fstreets', 'fdoors', 'fnew', 'froute', 'mask']) map.addSource(k, { type: 'geojson', data: fc([]) });
+      map.addLayer({ id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-color': t.ink, 'fill-opacity': 0.42, 'fill-opacity-transition': { duration: 600 } } });
       map.addLayer({ id: 'others-fill', type: 'fill', source: 'others', paint: { 'fill-color': t.muted, 'fill-opacity': 0.08 } });
       map.addLayer({ id: 'others-line', type: 'line', source: 'others', paint: { 'line-color': t.muted, 'line-width': 1, 'line-dasharray': [3, 2.5], 'line-opacity': 0.6 } });
       map.addLayer({ id: 'draw-fill', type: 'fill', source: 'draw', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': t.coral, 'fill-opacity': 0.1 } });
       map.addLayer({ id: 'draw-line', type: 'line', source: 'draw', filter: ['!=', ['geometry-type'], 'Point'], paint: { 'line-color': t.coral, 'line-width': 2.5 } });
       map.addLayer({ id: 'fstreets', type: 'line', source: 'fstreets', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.accent, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 2, 17, 6], 'line-opacity': 0.85 } });
       map.addLayer({ id: 'fdoors', type: 'circle', source: 'fdoors', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.6, 17, 4.5], 'circle-color': ['case', ['>', ['get', 'flats'], 1], t.info || t.accent, t.paper], 'circle-stroke-color': t.ink, 'circle-stroke-width': 1.2 } });
+      map.addLayer({ id: 'froute', type: 'line', source: 'froute', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.ink, 'line-width': 2.5, 'line-dasharray': [0.1, 1.8] } });
+      map.addLayer({ id: 'fnew', type: 'circle', source: 'fnew', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 13], 'circle-color': t.coral, 'circle-opacity': 0.35, 'circle-stroke-color': t.coral, 'circle-stroke-width': 2, 'circle-stroke-opacity': 0.8 } });
       map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': t.paper, 'circle-stroke-color': t.coral, 'circle-stroke-width': 3 } });
     });
     map.on('click', (e) => {
@@ -116,11 +119,11 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const map = mapRef.current;
     if (!map || !p || stageRef.current !== 'dig') { setRadar(null); return; }
     const b = bbox(p);
-    const a = map.project([b[0], b[1]]), c = map.project([b[2], b[3]]);
-    const ctr = map.project(centroid(p));
-    setRadar({ x: ctr.x, y: ctr.y, d: Math.max(120, Math.hypot(c.x - a.x, c.y - a.y)) });
+    const a = map.project([b[0], b[3]]), c = map.project([b[2], b[1]]);
+    setRadar({ x: a.x, y: a.y, w: Math.max(80, c.x - a.x), h: Math.max(80, c.y - a.y) });
   }
   const polyRef = useRef(null);
+  const [hud, setHud] = useState({ n: 0, label: 'On fouille le plan…' });
 
   async function dig(pg) {
     const map = mapRef.current;
@@ -130,10 +133,14 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     stageRef.current = 'dig';
     setDigStep(0);
     setFound({ streets: 0, doors: 0 });
+    setHud({ n: 0, label: 'On fouille le plan…' });
+    for (const k of ['fstreets', 'fdoors', 'fnew', 'froute']) map?.getSource(k)?.setData(fc([]));
+    // Tout s'assombrit sauf la zone : on voit où ça cherche.
+    map?.getSource('mask')?.setData(fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], [...pg, pg[0]].slice().reverse()] } }]));
     feel('scan');
     const b = bbox(pg);
-    map?.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: innerWidth >= 960 ? { top: 60, bottom: 60, left: 60, right: 420 } : { top: 70, bottom: 300, left: 30, right: 30 }, duration: 700, maxZoom: 17 });
-    setTimeout(() => placeRadar(pg), 750);
+    map?.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: innerWidth >= 960 ? { top: 80, bottom: 80, left: 80, right: 440 } : { top: 80, bottom: 250, left: 36, right: 36 }, duration: 700, maxZoom: 17 });
+    setTimeout(() => placeRadar(pg), 760);
     abort.current?.abort();
     abort.current = new AbortController();
     const t0 = performance.now();
@@ -141,25 +148,49 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       const json = await fetchOverpass(pg, { signal: abort.current.signal });
       const r = processOsm(json, pg);
       // On laisse le temps de voir que ça cherche.
-      await wait(Math.max(0, 900 - (performance.now() - t0)));
-      // 1 · les rues apparaissent
-      map?.getSource('fstreets')?.setData(fc(r.streets.flatMap((s) => s.lines.map((l) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: l } })))));
-      setFound({ streets: r.streets.length, doors: 0 });
+      await wait(Math.max(0, 1600 - (performance.now() - t0)));
+      // 1 · les rues se dessinent une par une
       setDigStep(1);
-      feel('tick');
-      // 2 · les numéros tombent par petits paquets
-      const steps = 10;
-      for (let i = 1; i <= steps; i++) {
-        const k = Math.ceil((r.doors.length * i) / steps);
-        map?.getSource('fdoors')?.setData(fc(r.doors.slice(0, k).map((d) => ({ type: 'Feature', properties: { flats: d.flats || 1 }, geometry: { type: 'Point', coordinates: d.p } }))));
-        setFound({ streets: r.streets.length, doors: k });
-        await wait(70);
+      const lines = r.streets.flatMap((st) => st.lines.map((l) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: l } })));
+      const sN = Math.max(1, r.streets.length);
+      for (let i = 1; i <= sN; i++) {
+        const k = Math.ceil((lines.length * i) / sN);
+        map?.getSource('fstreets')?.setData(fc(lines.slice(0, k)));
+        setFound({ streets: i, doors: 0 });
+        setHud({ n: Math.min(i, r.streets.length), label: r.streets.length > 1 ? 'rues trouvées' : 'rue trouvée' });
+        if (i % 2) feel('tick');
+        await wait(Math.max(60, Math.min(220, 1100 / sN)));
       }
+      // 2 · les numéros tombent par paquets, chaque nouveau paquet brille
       setDigStep(2);
-      await wait(250);
-      const plan = r.doors.length ? planRoute({ doors: r.doors, network: r.network, big: new Set(r.streets.filter((s) => s.big).map((s) => s.name)) }) : null;
-      await wait(350);
+      const steps = Math.min(24, Math.max(6, Math.ceil(r.doors.length / 8)));
+      const feat = (d) => ({ type: 'Feature', properties: { flats: d.flats || 1 }, geometry: { type: 'Point', coordinates: d.p } });
+      for (let i = 1; i <= steps; i++) {
+        const k0 = Math.ceil((r.doors.length * (i - 1)) / steps);
+        const k = Math.ceil((r.doors.length * i) / steps);
+        map?.getSource('fdoors')?.setData(fc(r.doors.slice(0, k).map(feat)));
+        map?.getSource('fnew')?.setData(fc(r.doors.slice(k0, k).map(feat)));
+        setFound({ streets: r.streets.length, doors: k });
+        setHud({ n: k, label: k > 1 ? 'numéros trouvés' : 'numéro trouvé' });
+        if (i % 3 === 0) feel('tick');
+        await wait(75);
+      }
+      map?.getSource('fnew')?.setData(fc([]));
+      // 3 · le parcours se trace
       setDigStep(3);
+      setHud({ n: r.doors.length, label: 'on calcule le parcours…' });
+      await wait(60);
+      const plan = r.doors.length ? planRoute({ doors: r.doors, network: r.network, big: new Set(r.streets.filter((x) => x.big).map((x) => x.name)) }) : null;
+      if (plan?.line?.length > 1) {
+        const L = plan.line;
+        for (let i = 1; i <= 12; i++) {
+          map?.getSource('froute')?.setData(fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: L.slice(0, Math.max(2, Math.ceil((L.length * i) / 12))) } }]));
+          await wait(55);
+        }
+      }
+      setDigStep(4);
+      await wait(250);
+      map?.getSource('mask')?.setData(fc([]));
       setResult({ ...r, plan });
       setStage('ready');
       stageRef.current = 'ready';
@@ -167,6 +198,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       feel('done');
     } catch (e) {
       if (e.name === 'AbortError') return;
+      map?.getSource('mask')?.setData(fc([]));
       setStage('error');
       stageRef.current = 'error';
       setRadar(null);
@@ -219,7 +251,18 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   return (
     <div class="creator">
       <div ref={box} class="creator-map" data-free aria-label="Carte pour tracer le secteur" role="region" data-testid="creator-map" />
-      {radar && <div class="radar" style={{ left: radar.x + 'px', top: radar.y + 'px', width: radar.d + 'px', height: radar.d + 'px' }} />}
+      {radar && (
+        <div class="scanbox" style={{ left: radar.x + 'px', top: radar.y + 'px', width: radar.w + 'px', height: radar.h + 'px' }}>
+          <i class="beam" />
+          <span class="corner tl" /><span class="corner tr" /><span class="corner bl" /><span class="corner br" />
+          <div class="hud-wrap">
+            <div class="hud" key={hud.label}>
+              <b class="hud-n"><Bump value={hud.n}>{hud.n}</Bump></b>
+              <span class="hud-l">{hud.label}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div class="creator-top">
         {stage === 'draw' && (
@@ -270,15 +313,15 @@ export function SectorCreator({ close, photo: initialPhoto }) {
             <>
               {stage === 'dig' ? (
                 <div class="dig" role="status" aria-live="polite">
-                  <h2>Nokk creuse votre zone…</h2>
+                  <h2 class="dig-title"><span class="dig-ico"><Icon name="search" /></span> Nokk fouille votre zone</h2>
                   <div class="dig-bar"><i /></div>
                   <div class="dig-steps">
                     {STEPS.map((label, i) => (
                       <div key={label} class={'dig-step' + (digStep > i ? ' ok' : digStep === i ? ' now' : '')}>
                         <span class="dot">{digStep > i && <Icon name="check" />}</span>
                         {label}
-                        {i === 0 && digStep > 0 && <span class="n">{found.streets} rues</span>}
-                        {i === 1 && digStep >= 1 && <span class="n">{found.doors} portes</span>}
+                        {i === 1 && digStep >= 1 && <span class="n">{found.streets} rues</span>}
+                        {i === 2 && digStep >= 2 && <span class="n">{found.doors} portes</span>}
                       </div>
                     ))}
                   </div>
