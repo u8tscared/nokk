@@ -14,7 +14,8 @@
   } catch (e) {}
   $$('[data-app]').forEach(function (a) {
     var q = ref ? '?ref=' + encodeURIComponent(ref) : '';
-    a.href = '../' + q + (a.getAttribute('data-app') === 'demo' ? '#demo' : '');
+    var m = a.getAttribute('data-app');
+    a.href = '../' + q + (/^demo(-pompier|-caserne)?$/.test(m) ? '#' + m : '');
   });
 
   var de = (params.get('de') || '').trim().slice(0, 30);
