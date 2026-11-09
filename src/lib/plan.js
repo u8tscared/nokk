@@ -95,20 +95,31 @@ export function enclose(seed, lines, { rays = 120, maxR = 1600, pad = 18 } = {})
   const L = local(seed);
   const segs = [];
   for (const line of lines) for (let i = 0; i < line.length - 1; i++) segs.push([L.to(line[i]), L.to(line[i + 1])]);
-  const hits = [];
+  // Pour chaque rayon : toutes les rues de bordure croisées (une rue lue « au bord » à tort peut traverser la zone).
+  const all = [];
   for (let k = 0; k < rays; k++) {
     const a = (k / rays) * 2 * Math.PI, dx = Math.cos(a), dy = Math.sin(a);
-    let best = Infinity;
+    const ts = [];
     for (const [p, q] of segs) {
       const ex = q[0] - p[0], ey = q[1] - p[1];
       const den = dx * ey - dy * ex;
       if (Math.abs(den) < 1e-9) continue;
       const t = (p[0] * ey - p[1] * ex) / den; // distance le long du rayon
       const u = (p[0] * dy - p[1] * dx) / den; // position sur le segment
-      if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
+      if (t > 25 && u >= 0 && u <= 1 && t <= maxR) ts.push(t);
     }
-    hits.push(best <= maxR ? best : null);
+    all.push(ts.sort((x, y) => x - y));
   }
+  // Le bord, c'est le dernier croisement avant un grand vide : on garde la plus lointaine
+  // rencontre qui reste proche des autres (pas plus de 2,2 fois la distance typique).
+  const firsts = all.filter((t) => t.length).map((t) => t[0]).sort((x, y) => x - y);
+  const typical = firsts.length ? firsts[Math.floor(firsts.length / 2)] : maxR;
+  const hits = all.map((ts) => {
+    if (!ts.length) return null;
+    let best = ts[0];
+    for (const t of ts) if (t <= typical * 2.2 && t - best < typical * 0.9) best = t;
+    return best;
+  });
   const found = hits.filter((h) => h != null);
   if (found.length < rays * 0.5) return null; // contour trop ouvert : on ne devine pas
   // Trous dans le contour : on reprend la distance des rayons voisins.
@@ -166,7 +177,7 @@ export async function traceFromPlan(plan, { near, signal, sector, onStep = () =>
   if (!B.length && !D.length) throw Object.assign(new Error('no_street'), { code: 'no_street' });
 
   // Point de départ à l'intérieur : le milieu des rues intérieures, sinon celui des rues du bord.
-  const ref = (D.length ? D : B).map((g) => g.p);
+  const ref = (B.length >= 2 ? B : D.length ? D : B).map((g) => g.p);
   const seed = [ref.reduce((a, p) => a + p[0], 0) / ref.length, ref.reduce((a, p) => a + p[1], 0) / ref.length];
 
   // 1 · Le contour suit les vraies rues de bordure (BD TOPO).
