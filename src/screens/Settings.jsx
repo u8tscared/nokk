@@ -13,6 +13,7 @@ import { askSwitch } from './Team.jsx';
 import { AccountCard } from './Account.jsx';
 import { account } from '../lib/account.js';
 import { formatEuro } from '../lib/model.js';
+import { versionLabel, updateState, checkUpdate } from '../lib/update.js';
 
 function Toggle({ id, label, sub, icon, tone, checked, onChange }) {
   return (
@@ -92,6 +93,14 @@ export function SettingsScreen() {
           )}
         </div>
       ) : null}
+      <div class="card update-card" data-testid="update-card">
+        <DotIcon icon={updateState.value === 'uptodate' ? 'check' : 'download'} tone={updateState.value === 'uptodate' ? '' : 'muted'} />
+        <div class="grow">
+          <b>Version du {versionLabel()}</b>
+          <div class="tiny muted">{{ checking: 'Recherche d\'une mise à jour…', updating: 'Installation de la nouvelle version…', uptodate: 'À jour ✓', offline: 'Pas de réseau pour vérifier' }[updateState.value] || 'Les mises à jour s\'installent toutes seules'}</div>
+        </div>
+        <Button kind="ghost small" disabled={updateState.value === 'checking' || updateState.value === 'updating'} onClick={() => checkUpdate()} data-testid="check-update">Vérifier</Button>
+      </div>
       <p class="tiny muted center">Nokk v{__APP_VERSION__} · cartes © OpenStreetMap</p>
     </div>
   );

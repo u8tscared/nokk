@@ -369,3 +369,4 @@ button.link.center { align-self: center; }
 .auto-sectors > span { flex: none; font-size: 13px; font-weight: 650; background: var(--paper); border-radius: 12px; padding: 6px 10px; box-shadow: var(--sh); }
 .auto-sectors .chip { flex: none; background: var(--paper); box-shadow: var(--sh); }
 .auto-sectors .chip[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.update-card { display: flex; align-items: center; gap: 12px; }

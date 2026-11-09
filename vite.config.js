@@ -10,6 +10,8 @@ export default defineConfig({
   base: process.env.NOKK_BASE || './',
   define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [
+    // version.json : la dernière version en ligne (lue sans cache pour savoir s'il faut mettre à jour).
+    { name: 'nokk-version', apply: 'build', generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) }); } },
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -40,6 +42,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
+        globIgnores: ['version.json'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [

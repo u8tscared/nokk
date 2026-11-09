@@ -45,6 +45,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     immediate: true,
     onRegisteredSW(_url, reg) {
       if (!reg) return;
+      import('./lib/update.js').then((u) => { u.setRegistration(reg); u.checkUpdate(); });
       // Une version restée en attente (anciennes installations) : on la fait passer.
       const kick = () => reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
       kick();
@@ -52,7 +53,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         const w = reg.installing;
         w?.addEventListener('statechange', () => { if (w.state === 'installed') kick(); });
       });
-      const check = () => { if (navigator.onLine !== false) reg.update().catch(() => {}); };
+      const check = () => { if (navigator.onLine !== false) { reg.update().catch(() => {}); import('./lib/update.js').then((u) => u.checkUpdate({ quiet: true })); } };
       setInterval(check, 15 * 60 * 1000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
       window.addEventListener('online', check);
