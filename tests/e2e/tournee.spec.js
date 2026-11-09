@@ -98,6 +98,7 @@ test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) 
     r.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync('tests/fixtures/overpass.json', 'utf8') });
   });
   await page.goto('/');
+  await page.getByTestId('no-account').click();
   await page.getByTestId('create-team').click();
   await page.locator('#oname1').fill('Lucas Martin');
   await page.getByTestId('ob-next').click();
@@ -130,6 +131,8 @@ test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) 
   await expect.poll(() => page.evaluate(() => window.__nokk.store.data.value.doors.length)).toBeGreaterThan(5);
   // Les données sont gardées sur l'appareil (rechargement).
   await page.reload();
+  // Sans compte, on propose de mettre les tournées à l'abri ; « Plus tard » ramène à la carte.
+  await page.getByTestId('later').click();
   await expect(page.getByTestId('screen-carte')).toBeVisible();
   expect(await page.evaluate(() => window.__nokk.store.data.value.sectors.length)).toBe(1);
   await expect(page.locator('[data-testid=next-door]:visible')).toBeVisible();

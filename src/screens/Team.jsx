@@ -1,3 +1,5 @@
+import { InviteCard } from './Account.jsx';
+import { account } from '../lib/account.js';
 import { useState } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Avatar, Empty, toast, Field, Seg, DotIcon, Stepper } from '../ui/ui.jsx';
@@ -170,8 +172,9 @@ export function TeamScreen() {
         </div>
         {!d.members.length && <Empty icon="team" title="Personne pour l'instant" text="Ajoutez les équipiers qui font la tournée." />}
       </div>
+      <InviteCard />
       <div class="card">
-        <div class="hrow"><DotIcon icon="share" tone="ok" /><div class="grow"><div class="card-title">Partager avec l'équipe</div><div class="small muted">Envoyez le fichier de l'équipe (secteurs, portes, passages) par message. Chacun l'ouvre dans Nokk.</div></div></div>
+        <div class="hrow"><DotIcon icon="share" tone="ok" /><div class="grow"><div class="card-title">{account.value?.team ? 'Envoyer un fichier' : 'Partager avec l\'équipe'}</div><div class="small muted">Envoyez le fichier de l'équipe (secteurs, portes, passages) par message. Chacun l'ouvre dans Nokk.</div></div></div>
         <div class="hrow" style={{ marginTop: 12 }}>
           <Button kind="soft small grow" icon="share" onClick={() => {
             const { pin, ...x } = {};
@@ -179,7 +182,6 @@ export function TeamScreen() {
             shareFile(`nokk-equipe-${new Date().toISOString().slice(0, 10)}.nokk.json`, JSON.stringify(payload), 'application/json', 'Équipe Nokk');
           }}>Envoyer le fichier</Button>
         </div>
-        <p class="tiny muted" style={{ marginTop: 10 }}><span class="badge-soon">Bientôt</span> Synchro en direct entre téléphones, sans fichier.</p>
       </div>
       <ImportCard />
     </div>
