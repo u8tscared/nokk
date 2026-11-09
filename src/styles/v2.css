@@ -164,7 +164,7 @@
 .dtile.on .ctl .icon-btn { background: var(--well); }
 .dtile .ctl input { min-height: 40px; width: 100%; min-width: 0; text-align: center; font-family: var(--d); font-weight: 750; font-size: 20px; padding: 0; background: transparent; border: none; box-shadow: none; }
 .cash-bar {
-  position: fixed; z-index: 60; left: 0; right: 0; bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 10px - var(--vgap, 0px));
+  position: fixed; z-index: 60; left: 0; right: 0; bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 10px);
   margin: 0 auto; width: min(640px, calc(100% - 24px)); display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px;
   border-radius: 22px; background: var(--ink); color: var(--on-ink); box-shadow: var(--sh-float);
   animation: rise var(--t-mid) var(--ease) both;
@@ -322,7 +322,7 @@
 .door-tools3 .link-btn { justify-content: center; white-space: nowrap; font-size: 14px; padding-left: 4px; padding-right: 4px; }
 
 /* ——— V3 : compte et sauvegarde ——— */
-.welcome { bottom: calc(0px - var(--vgap, 0px)); }
+.welcome { bottom: calc(0px); }
 .btn.google-btn { --b-bg: var(--paper); --b-fg: var(--ink); --b-edge: var(--rim-2); border: 1.5px solid var(--rim-2); }
 .btn.google-btn .ico { width: 20px; height: 20px; }
 .auth-card { padding: 18px; }

@@ -113,6 +113,8 @@ export function MapView({ onDoor, visible = true }) {
     mapInstance = map;
     window.__nokkMap = map;
     map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap · OpenFreeMap' }), 'top-left');
+    // La mention s'ouvre d'elle-même au chargement : on la replie en petit bouton (i), un toucher la déplie.
+    map.once('load', () => map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'));
     map.touchZoomRotate.disableRotation();
 
     let ready = false;

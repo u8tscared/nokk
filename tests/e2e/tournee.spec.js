@@ -92,7 +92,8 @@ test('exports PDF et tableur', async ({ page }) => {
 
 test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) => {
   await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-  // Overpass simulé avec une vraie réponse OSM réduite.
+  // Service IGN en panne : la recherche bascule sur OpenStreetMap (simulé avec une vraie réponse réduite).
+  await page.route(/data\.geopf\.fr/, (r) => r.abort());
   await page.route(/overpass|interpreter/, async (r) => {
     const fs = await import('node:fs');
     r.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync('tests/fixtures/overpass.json', 'utf8') });
