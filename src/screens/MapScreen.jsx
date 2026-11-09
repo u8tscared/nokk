@@ -12,6 +12,7 @@ import { openDoor } from './DoorSheet.jsx';
 import { openSheet, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { DrawBar } from './SectorNew.jsx';
+import { CallbacksBar } from './Repasser.jsx';
 import { TourBar } from './Tour.jsx';
 import { activeSession } from '../lib/sessions.js';
 
@@ -77,6 +78,7 @@ function Summary({ wide }) {
   return (
     <div class="summary" data-testid="summary">
       <TourBar />
+      <CallbacksBar />
       <div class="hrow between" hidden={!!activeSession.value}>
         <div>
           <div class="tiny muted">Ce soir</div>

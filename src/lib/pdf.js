@@ -184,3 +184,44 @@ export async function handoverPdf(d, h) {
 }
 
 export { totals };
+
+// Planche A4 de 20 cartes « Vous étiez absent ? » : 4 × 5, traits de coupe, QR unique par carte.
+export async function qrCardsPdf({ org, sector, url, from = 1, count = 20 }) {
+  const { jsPDF } = await lib();
+  const { qrMatrix } = await import('./qr.js');
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, cols = 4, rows = 5, mx = 7, my = 8.5;
+  const cw = (W - mx * 2) / cols, ch = (H - my * 2) / rows;
+  for (let i = 0; i < count; i++) {
+    const n = from + i;
+    const c = i % cols, r = Math.floor(i / cols) % rows;
+    if (i > 0 && i % (cols * rows) === 0) doc.addPage();
+    const x = mx + c * cw, y = my + r * ch;
+    // Traits de coupe discrets.
+    doc.setDrawColor(200, 210, 208); doc.setLineDashPattern([1, 1.2], 0); doc.setLineWidth(0.2);
+    doc.rect(x, y, cw, ch);
+    doc.setLineDashPattern([], 0);
+    // Bandeau.
+    doc.setFillColor(...GREEN); doc.roundedRect(x + 3, y + 3, cw - 6, 9.5, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4);
+    doc.text(clean(doc.splitTextToSize(org?.name || 'Amicale des sapeurs-pompiers', cw - 10)[0]), x + cw / 2, y + 6.9, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.2);
+    doc.text(clean(`Calendriers ${org?.year || ''}`), x + cw / 2, y + 10.4, { align: 'center' });
+    doc.setTextColor(...INK); doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+    doc.text('Vous étiez absent ?', x + cw / 2, y + 18.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.6); doc.setTextColor(...MUTED);
+    doc.text(doc.splitTextToSize('Scannez et choisissez quand on repasse.', cw - 8), x + cw / 2, y + 21.6, { align: 'center' });
+    // QR.
+    const { n: m, dark } = qrMatrix(`${url}.${n}`, 'M');
+    const size = 27, qx = x + (cw - size) / 2, qy = y + 25, cell = size / m;
+    doc.setFillColor(...INK);
+    for (let rr = 0; rr < m; rr++) for (let cc = 0; cc < m; cc++) if (dark(rr, cc)) doc.rect(qx + cc * cell, qy + rr * cell, cell + 0.02, cell + 0.02, 'F');
+    // Numéro de carte.
+    doc.setFillColor(...CORAL); doc.roundedRect(x + cw / 2 - 9, y + ch - 7.8, 18, 5.2, 2.6, 2.6, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
+    doc.text(`n° ${n}`, x + cw / 2, y + ch - 4.3, { align: 'center' });
+    doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(5.4);
+    doc.text(clean(sector?.name || ''), x + 3.5, y + ch - 3.2);
+  }
+  return doc.output('blob');
+}

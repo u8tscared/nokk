@@ -10,6 +10,7 @@ import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { openSheet } from '../lib/nav.js';
 import { startGeo } from '../lib/geoloc.js';
+import { nextCard } from '../lib/callbacks.js';
 
 const QUICK = [500, 1000, 1500, 2000, 3000, 5000];
 const walk = (m) => Math.max(1, Math.round(m / 75));
@@ -135,10 +136,11 @@ export function DoorSheet({ doorId: initialId, close, start }) {
 
   function record(result) {
     const u = unit.trim();
-    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, name: name.trim() || undefined, note: note.trim() || undefined });
+    const card = result === 'absent' ? nextCard(door.sectorId) : null;
+    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, name: name.trim() || undefined, note: note.trim() || undefined, card: card || undefined });
     feel(result === 'refus' ? 'err' : 'ok');
     stamp(result === 'absent' ? 'warn' : 'muted');
-    const label = result === 'absent' ? 'Absent · on repassera' : result === 'refus' ? 'Refus noté · on ne repassera pas' : 'Déjà pris noté';
+    const label = result === 'absent' ? (card ? `Absent · laissez la carte n° ${card}` : 'Absent · on repassera') : result === 'refus' ? 'Refus noté · on ne repassera pas' : 'Déjà pris noté';
     toast((u ? u + ' · ' : '') + label, { undo: () => { removeVisit(v.id); setMotion('back'); setDoorId(doorId); setStep('ask'); if (u) setUnit(u); } });
     after(u);
   }
@@ -253,7 +255,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             <span class="yes-hint">{formatEuro(usual)} habituel</span>
           </button>
           <div class="outcomes">
-            <button class="outcome tone-warn" onClick={() => record('absent')}><Icon name="absent" />Absent</button>
+            <button class="outcome tone-warn" onClick={() => record('absent')} data-testid="absent"><Icon name="absent" />Absent{nextCard(door.sectorId) ? <span class="outcome-sub">carte n° {nextCard(door.sectorId)}</span> : null}</button>
             <button class="outcome tone-bad" onClick={() => record('refus')}><Icon name="refus" />Non merci</button>
             <button class="outcome tone-muted" onClick={() => record('deja')}><Icon name="deja" />Déjà pris</button>
           </div>

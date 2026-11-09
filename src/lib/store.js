@@ -32,6 +32,7 @@ export const emptyData = () => ({
   visits: [],
   handovers: [],
   stock: [], // { id, ts, memberId, qty }  qty>0 = calendriers confiés, <0 = rendus
+  callbacks: [], // demandes « Repassez plus tard » reçues par QR
   sessions: [], // tournées : { id, startedAt, endedAt, sectorId, crew, by, auto }
   currentSectorId: null,
   crew: [], // équipiers de ce soir

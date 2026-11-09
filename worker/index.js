@@ -2,7 +2,8 @@
 // Aucune dépendance : vérification des jetons Firebase par WebCrypto.
 
 const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
-const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions']);
+const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions', 'callbacks']);
+export const FEATURES = ['admin', 'ref', 'callbacks'];
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const PAGE = 1000;
 const MAX_CHANGES = 500;
@@ -195,7 +196,7 @@ async function sync(env, user, b) {
 async function exportTeam(env, user, teamId) {
   const m = await membership(env, teamId, user.uid);
   const { results } = await env.DB.prepare('SELECT kind, id, data FROM items WHERE team_id = ?1 AND deleted = 0').bind(teamId).all();
-  const out = { app: 'nokk', exportedAt: new Date().toISOString(), team: { id: teamId, name: m.name }, org: null, members: [], sectors: [], doors: [], visits: [], handovers: [], stock: [], sessions: [] };
+  const out = { app: 'nokk', exportedAt: new Date().toISOString(), team: { id: teamId, name: m.name }, org: null, members: [], sectors: [], doors: [], visits: [], handovers: [], stock: [], sessions: [], callbacks: [] };
   for (const r of results) {
     const d = JSON.parse(r.data);
     if (r.kind === 'org') out.org = d;
@@ -204,6 +205,41 @@ async function exportTeam(env, user, teamId) {
   return out;
 }
 
+
+// ——— QR « Repassez plus tard » : page publique, sans compte ———
+// Chaque secteur porte un jeton (sector.qr). La carte n° n laissée à une porte renvoie vers /nokk/r/#JETON.n
+const TOKEN_RE = /^[A-Za-z0-9]{8,24}$/;
+async function sectorByToken(env, token) {
+  if (!TOKEN_RE.test(token)) throw new HttpError(404, 'unknown_qr');
+  const r = await env.DB.prepare("SELECT team_id, data FROM items WHERE kind = 'sectors' AND deleted = 0 AND json_extract(data, '$.qr') = ?1 LIMIT 1").bind(token).first();
+  if (!r) throw new HttpError(404, 'unknown_qr');
+  const sector = JSON.parse(r.data);
+  const org = await env.DB.prepare("SELECT data FROM items WHERE team_id = ?1 AND kind = 'org' AND deleted = 0").bind(r.team_id).first();
+  return { teamId: r.team_id, sector, org: org ? JSON.parse(org.data) : {} };
+}
+async function qrInfo(env, token) {
+  const { sector, org } = await sectorByToken(env, token);
+  return { org: { name: org.name || 'Amicale des sapeurs-pompiers', city: org.city || null, year: org.year || null }, sector: { name: sector.name }, slots: sector.qrSlots || null };
+}
+const clip = (v, n) => (v == null ? undefined : String(v).trim().slice(0, n) || undefined);
+async function qrAnswer(env, token, b) {
+  const { teamId, sector } = await sectorByToken(env, token);
+  const n = Math.floor(+b.n);
+  const want = b.want === 'non' ? 'non' : b.want === 'don' ? 'don' : 'oui';
+  const slot = b.slot && typeof b.slot === 'object' ? { day: clip(b.slot.day, 10), from: Math.floor(+b.slot.from) || null, to: Math.floor(+b.slot.to) || null } : null;
+  if (want === 'oui' && (!slot?.day || !/^\d{4}-\d{2}-\d{2}$/.test(slot.day))) throw new HttpError(400, 'bad_slot');
+  const email = clip(b.email, 120);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new HttpError(400, 'bad_email');
+  const count = await env.DB.prepare("SELECT COUNT(*) AS c FROM items WHERE team_id = ?1 AND kind = 'callbacks' AND json_extract(data, '$.sectorId') = ?2").bind(teamId, sector.id).first();
+  if ((count?.c || 0) >= 400) throw new HttpError(429, 'too_many');
+  const now = Date.now();
+  const id = rid('cb_', 8);
+  const d = { id, sectorId: sector.id, n: Number.isFinite(n) && n > 0 && n < 1000 ? n : null, want, slot: want === 'oui' ? slot : null,
+    name: clip(b.name, 80), address: clip(b.address, 160), email, note: clip(b.note, 300), ts: now, status: 'new' };
+  const row = await env.DB.prepare('UPDATE teams SET seq = seq + 1 WHERE id = ?1 RETURNING seq').bind(teamId).first();
+  await env.DB.prepare("INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by) VALUES (?1, 'callbacks', ?2, ?3, ?4, ?5, 0, 'qr')").bind(teamId, id, JSON.stringify(d), now, row.seq).run();
+  return { ok: true, id };
+}
 
 // ——— Parrainage : qui a fait connaître Nokk à qui ———
 let refTable = false;
@@ -408,7 +444,14 @@ export default {
     try {
       if (path === '/' || path === '/health') {
         const r = await env.DB.prepare('SELECT COUNT(*) AS n FROM teams').first();
-        return json({ ok: true, app: 'nokk-api', teams: r?.n ?? 0 }, 200, h);
+        return json({ ok: true, app: 'nokk-api', teams: r?.n ?? 0, features: FEATURES }, 200, h);
+      }
+      // Page publique « Repassez plus tard » : sans compte, depuis le site seulement.
+      let qm;
+      if ((qm = /^\/r\/([A-Za-z0-9]+)$/.exec(path))) {
+        if (!allowedOrigin(req.headers.get('origin'), env)) throw new HttpError(403, 'origin');
+        if (req.method === 'GET') return json(await qrInfo(env, qm[1]), 200, h);
+        if (req.method === 'POST') return json(await qrAnswer(env, qm[1], await body(req)), 200, h);
       }
       // Lecture de plan : aussi sans compte, mais seulement depuis l'app.
       if (path === '/plan/read' && req.method === 'POST') {

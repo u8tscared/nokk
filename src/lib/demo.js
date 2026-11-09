@@ -187,6 +187,26 @@ export async function buildDemo(now = Date.now()) {
     }
   });
 
+  // QR « Repassez plus tard » : les absents du secteur 3 et 4 ont reçu une carte, trois habitants ont répondu.
+  const callbacks = [];
+  const day = (k) => { const d = new Date(now + k * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  for (const sid of ['sec-3', 'sec-4']) {
+    const s = sectors.find((x) => x.id === sid);
+    if (!s) continue;
+    s.qr = 'DEMO' + sid.replace(/\W/g, '') + 'qrcode';
+    s.qrPrinted = 40;
+    let card = 0;
+    for (const v of visits) if (v.sectorId === sid && v.result === 'absent' && !v.unit) v.card = ++card;
+    const answers = sid === 'sec-4' ? [
+      { n: 2, want: 'oui', slot: { day: day(1), from: 18, to: 19 }, name: 'Mme Garcia', note: 'Sonnez deux fois, je suis au fond du jardin' },
+      { n: 5, want: 'oui', slot: { day: day(2), from: 17, to: 18 }, name: 'M. Leroy', email: 'leroy@exemple.fr' },
+      { n: 3, want: 'non', note: 'Déjà pris chez un collègue de la caserne' },
+    ] : [
+      { n: 1, want: 'oui', slot: { day: day(1), from: 19, to: 20 }, name: 'Famille Roux' },
+    ];
+    answers.forEach((a, i) => { if (a.n <= card) callbacks.push({ id: `cb-${sid}-${i}`, sectorId: sid, ts: now - (3 - i) * 36e5, status: 'new', ...a }); });
+  }
+
   const handovers = [
     { id: 'h-1', ts: now - 7 * 864e5 + 3 * 36e5, from: 'm-lucas', to: 'm-camille', sectorId: 'sec-1', counted: null, diff: 0, note: 'RAS' },
   ];
@@ -208,6 +228,7 @@ export async function buildDemo(now = Date.now()) {
       visits,
       handovers,
       stock,
+      callbacks,
       currentSectorId: 'sec-4',
       crew: ['m-lucas', 'm-ines'],
     },

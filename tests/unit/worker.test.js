@@ -150,6 +150,27 @@ describe('API Nokk', () => {
     expect(o.accounts.find((a) => a.uid === 'parrain123').invited).toBe(1);
   });
 
+  it('QR « Repassez » : page publique, la réponse arrive dans les données de l\'équipe', async () => {
+    const t = (await call('chefqr', 'POST', '/teams', { name: 'Caluire' })).body;
+    const now = Date.now();
+    await call('chefqr', 'POST', '/sync', { teamId: t.id, since: 0, changes: [
+      { k: 'org', i: 'org', d: { name: 'Amicale de Caluire', city: 'Caluire', year: 2027 }, u: now },
+      { k: 'sectors', i: 'sq', d: { id: 'sq', name: 'Bourg', qr: 'AbCdEf123456' }, u: now },
+    ] });
+    const pub = (method, path, b, origin = 'https://u8tscared.github.io') => call(null, method, path, b, origin);
+    expect((await pub('GET', '/r/AbCdEf123456')).body).toMatchObject({ org: { name: 'Amicale de Caluire' }, sector: { name: 'Bourg' } });
+    expect((await pub('GET', '/r/AbCdEf123456', undefined, 'https://autre.fr')).status).toBe(403);
+    expect((await pub('GET', '/r/inconnu00')).status).toBe(404);
+    expect((await pub('POST', '/r/AbCdEf123456', { n: 7, want: 'oui' })).status).toBe(400);
+    const ok = await pub('POST', '/r/AbCdEf123456', { n: 7, want: 'oui', slot: { day: '2026-12-02', from: 18, to: 19 }, name: 'Mme Dupont', email: 'dupont@ex.fr' });
+    expect(ok.body.ok).toBe(true);
+    const got = (await call('chefqr', 'POST', '/sync', { teamId: t.id, since: 0 })).body.items.find((x) => x.k === 'callbacks');
+    expect(got.d).toMatchObject({ sectorId: 'sq', n: 7, want: 'oui', slot: { day: '2026-12-02', from: 18, to: 19 }, name: 'Mme Dupont', status: 'new' });
+    // L'équipe marque la demande comme faite.
+    expect((await call('chefqr', 'POST', '/sync', { teamId: t.id, since: 0, changes: [{ k: 'callbacks', i: got.i, d: { ...got.d, status: 'done' }, u: Date.now() }] })).body.accepted).toBe(1);
+    expect((await call(null, 'GET', '/health')).body.features).toContain('callbacks');
+  });
+
   it('rejette les données invalides', async () => {
     const t = (await call('c', 'POST', '/teams', { name: 'X' })).body;
     expect((await call('c', 'POST', '/sync', { teamId: t.id, changes: [{ k: 'hack', i: 'x', d: {} }] })).status).toBe(400);

@@ -21,6 +21,7 @@ installFreeze();
 installOnline();
 resumeGeoIfGranted();
 captureRef();
+import('./lib/callbacks.js').then((m) => m.loadFeatures());
 bootAccount();
 
 render(<App />, document.getElementById('app'));

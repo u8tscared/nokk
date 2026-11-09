@@ -14,6 +14,7 @@ import { cacheSectorTiles } from '../lib/offline.js';
 import { bbox } from '../lib/geo.js';
 import { account, inviteLink } from '../lib/account.js';
 import { markStart, StartCard } from './Start.jsx';
+import { openQrCards, CallbacksBar } from './Repasser.jsx';
 
 function SectorCard({ s }) {
   const doors = doorsBySector.value.get(s.id) || [];
@@ -102,6 +103,9 @@ function SectorOptions({ s, close }) {
           toast(n > 0 ? `Carte gardée hors ligne · ${n} morceaux` : 'Petit souci de réseau, réessayez', { error: n <= 0 });
         }}>
           <DotIcon icon="download" sm tone="info" /><span class="grow"><span class="t">{busy ? 'Téléchargement de la carte…' : 'Garder la carte hors ligne'}</span>{demo.value && <span class="s">Pas en démo</span>}</span>
+        </button>
+        <button class="row" onClick={() => { close(); setTimeout(() => openQrCards(s), 300); }} data-testid="qr-cards-open">
+          <DotIcon icon="qr" sm tone="bad" /><span class="grow"><span class="t">Cartes « Repassez plus tard »</span><span class="s">{s.qrPrinted ? `${s.qrPrinted} cartes imprimées` : 'Pour les absents : ils choisissent quand on repasse'}</span></span>
         </button>
         <button class="row" onClick={() => shareSector(s)}>
           <DotIcon icon="share" sm tone="ok" /><span class="grow"><span class="t">Envoyer le secteur à un équipier</span><span class="s">Un fichier à ouvrir dans Nokk</span></span>
@@ -249,6 +253,7 @@ export function SectorsScreen() {
         <div><h1>Secteurs</h1><div class="sub">{d.sectors.length} secteurs · {d.doors.length} portes · {formatEuro(t.amount)}</div></div>
       </div>
       <StartCard compact />
+      <CallbacksBar />
       {role.value !== 'pompier' && <SectorBoard />}
       {d.sectors.length === 0 ? (
         <div class="card">
