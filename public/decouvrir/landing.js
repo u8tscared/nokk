@@ -304,5 +304,49 @@
     });
   })();
 
+  // ——— Avant / avec Nokk : glissière ———
+  (function compare() {
+    var el = $('#compare'); if (!el) return;
+    var range = $('.cmp-range', el), touched = false, raf = 0;
+    function set(v) { v = Math.max(0, Math.min(100, v)); el.style.setProperty('--x', v + '%'); range.value = Math.round(v); }
+    function fromEvent(e) { var r = el.getBoundingClientRect(); return (e.clientX - r.left) / r.width * 100; }
+    var dragging = false, sx = 0, sy = 0, decided = false;
+    el.addEventListener('pointerdown', function (e) {
+      touched = true; cancelAnimationFrame(raf); dragging = true; decided = e.pointerType === 'mouse'; sx = e.clientX; sy = e.clientY;
+      if (decided) { set(fromEvent(e)); el.classList.add('drag'); el.setPointerCapture(e.pointerId); }
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      if (!decided) {
+        var dx = Math.abs(e.clientX - sx), dy = Math.abs(e.clientY - sy);
+        if (dx < 6 && dy < 6) return;
+        if (dy > dx) { dragging = false; return; }
+        decided = true; el.classList.add('drag'); try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      set(fromEvent(e));
+    });
+    function end(e) { if (dragging && !decided && e && e.type === 'pointerup') set(fromEvent(e)); dragging = false; el.classList.remove('drag'); }
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    range.addEventListener('input', function () { touched = true; cancelAnimationFrame(raf); set(+range.value); });
+    // Balayage de démonstration la première fois qu'on la voit
+    if (reduce || !('IntersectionObserver' in window)) return;
+    var ob = new IntersectionObserver(function (es) {
+      if (!es[0].isIntersecting) return;
+      ob.disconnect();
+      var keys = [[0, 50], [700, 50], [1700, 88], [2900, 12], [4100, 50]], t0 = performance.now();
+      (function tick(now) {
+        if (touched) return;
+        var t = now - t0, i = 1;
+        while (i < keys.length && keys[i][0] < t) i++;
+        if (i >= keys.length) { set(50); return; }
+        var a = keys[i - 1], b = keys[i], k = (t - a[0]) / (b[0] - a[0]);
+        k = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        set(a[1] + (b[1] - a[1]) * k);
+        raf = requestAnimationFrame(tick);
+      })(t0);
+    }, { threshold: 0.5 });
+    ob.observe(el);
+  })();
+
   onScroll();
 })();

@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Figtree:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Figtree:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="landing.css" />
 </head>
 <body>
@@ -177,11 +177,13 @@
         </div>
       </div>
 
-      <div class="marquee" aria-hidden="true">
-        <div class="marquee-track">
-          <span>Secteurs depuis vos anciens plans</span><i></i><span>Parcours optimisé</span><i></i><span>Porte à porte en 2 gestes</span><i></i><span>Caisse sans écart</span><i></i><span>Espace caserne</span><i></i><span>QR « Repassez plus tard »</span><i></i><span>Hors ligne</span><i></i><span>Historique d'une année sur l'autre</span><i></i>
-          <span>Secteurs depuis vos anciens plans</span><i></i><span>Parcours optimisé</span><i></i><span>Porte à porte en 2 gestes</span><i></i><span>Caisse sans écart</span><i></i><span>Espace caserne</span><i></i><span>QR « Repassez plus tard »</span><i></i><span>Hors ligne</span><i></i><span>Historique d'une année sur l'autre</span><i></i>
-        </div>
+      <div class="wrap">
+        <ul class="facts">
+          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6.5 12.5a9 9 0 0 1 11 0M10 16a4 4 0 0 1 4 0M12 19.5h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span><b>Hors ligne</b><small>tout est gardé</small></span></li>
+          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="9.5" r="2.5" fill="currentColor"/></svg></span><span><b>Partout en France</b><small>rues et numéros officiels</small></span></li>
+          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span><b>iPhone et Android</b><small>sans passer par un store</small></span></li>
+          <li><span class="fact-ico red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>0 € pour les casernes</b><small>pendant la phase de test</small></span></li>
+        </ul>
       </div>
     </section>
 
@@ -190,26 +192,29 @@
       <div class="wrap">
         <p class="kicker reveal">Avant / avec Nokk</p>
         <h2 class="h2 reveal">Fini le carnet à spirale, la photocopie du plan et le recomptage à minuit.</h2>
-        <div class="ba-grid">
-          <div class="ba before reveal">
-            <h3>Avant</h3>
-            <ul>
-              <li>Des plans papier photocopiés, surlignés, perdus.</li>
-              <li>« On est déjà passés rue Pasteur ? » Personne ne sait.</li>
-              <li>Les absents notés sur un coin de feuille, jamais revus.</li>
-              <li>Le soir, recompter les billets et chercher l'écart.</li>
+        <p class="lead reveal">Faites glisser pour voir la différence.</p>
+        <div class="compare reveal" id="compare" style="--x:50%">
+          <div class="cmp-layer cmp-after" aria-label="Avec Nokk">
+            <span class="cmp-tag after-tag">Avec Nokk</span>
+            <ul class="cmp-rows">
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M4 7h4l2-3h4l2 3h4v12H4z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span><b>Secteur 4 importé en photo</b><small>214 portes · 38 rues · imprimable en PDF</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Rue Pasteur · faite</b><small>par Thomas et Inès, mardi à 19 h 12</small></span><i class="street"></i></li>
+              <li><span class="ci warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span><b>3 absents à revoir</b><small>ajoutés à la tournée de mardi, 18 h</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span><span><b>Caisse : 1 250 €</b><small>écart 0 € · remise signée au trésorier</small></span><em class="zero">0 €</em></li>
             </ul>
           </div>
-          <div class="ba-arrow reveal" aria-hidden="true"><svg viewBox="0 0 60 24"><path d="M2 12h52M44 3l10 9-10 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div class="ba after reveal">
-            <h3>Avec Nokk</h3>
-            <ul>
-              <li>Vos anciens plans importés en photo, en secteurs propres.</li>
-              <li>Les rues faites se colorent. On ne repasse jamais deux fois.</li>
-              <li>Les absents reviennent tout seuls dans la tournée de rattrapage.</li>
-              <li>La caisse se calcule pendant la tournée. Écart : 0 €.</li>
+          <div class="cmp-layer cmp-before" aria-label="Avant">
+            <span class="cmp-tag before-tag">Avant</span>
+            <span class="coffee" aria-hidden="true"></span>
+            <ul class="cmp-rows hand">
+              <li><span class="ci">✗</span><span><b>Plan photocopié n°3…</b><small>et le n°4 il est où ??</small></span></li>
+              <li><span class="ci">✗</span><span><b>R. Pasteur → <s>fait</s> ?</b><small>demander à Thomas</small></span></li>
+              <li><span class="ci">✗</span><span><b>Absents : 12, 14, 18 bis…</b><small>repasser un jour (?)</small></span></li>
+              <li><span class="ci">✗</span><span><b>Caisse : 1 235 € ???</b><small>il manque 15 €, on recompte…</small></span></li>
             </ul>
           </div>
+          <div class="cmp-handle" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <input class="cmp-range" type="range" min="0" max="100" value="50" aria-label="Comparer avant et avec Nokk" />
         </div>
       </div>
     </section>
