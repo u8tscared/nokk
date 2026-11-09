@@ -265,7 +265,7 @@
       url = u.href;
       $('#sh-url').textContent = url.replace(/^https?:\/\//, '');
       var who = name.value.trim();
-      var msg = (who ? 'Salut, c\'est ' + who + '. ' : '') + 'Regarde Nokk, l\'appli qu\'on utilise pour la tournée des calendriers : secteurs, parcours, caisse, et ça marche sans réseau. Gratuit pour les casernes : ';
+      var msg = (who ? 'Salut, c\'est ' + who + '. ' : '') + 'Regarde Nokk, l\'appli qu\'on utilise pour la tournée des calendriers : secteurs, parcours, caisse, et ça marche sans réseau. Gratuit toute cette saison : ';
       $('#sh-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg + url);
       $('#sh-sms').href = 'sms:?&body=' + encodeURIComponent(msg + url);
       $('#sh-mail').href = 'mailto:?subject=' + encodeURIComponent('Nokk, l\'appli pour la tournée des calendriers') + '&body=' + encodeURIComponent(msg + url);
