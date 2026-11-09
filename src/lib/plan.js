@@ -3,7 +3,7 @@
 // 2. on retrouve ces rues dans la Base Adresse Nationale ;
 // 3. la zone est l'enveloppe des numéros de ces rues, avec une petite marge.
 import { GEOCODE } from './adresse.js';
-import { getAll } from './ign.js';
+import { getAll, niceName } from './ign.js';
 
 export async function readPlanPhoto(image, { signal } = {}) {
   let r;
@@ -19,7 +19,7 @@ export async function readPlanPhoto(image, { signal } = {}) {
 }
 
 export const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .replace(/['’-]/g, ' ').replace(/\b(rue|avenue|av|boulevard|bd|allee|chemin|impasse|place|route|square|quai|cours|passage|sentier|residence|rond point|de|du|des|la|le|les|l|d|et|aux|au|sur|en)\b/g, ' ')
+  .replace(/['’.-]/g, ' ').replace(/\b(rue|r|avenue|av|ave|boulevard|bd|allee|all|chemin|che|ch|impasse|imp|place|pl|route|rte|square|sq|quai|cours|crs|passage|pas|sentier|sen|residence|res|montee|mte|rond point|de|du|des|la|le|les|l|d|et|aux|au|sur|en)\b/g, ' ')
   .replace(/\s+/g, ' ').trim();
 
 async function geocode(params, signal) {
@@ -74,51 +74,120 @@ function pad(points, m = 28) {
   return out;
 }
 
-/**
- * @param {{ville?:string|null, cp?:string|null, zone:string[], rues?:string[], adresses?:string[]}} plan
- * @returns {Promise<{points:[number,number][], city:string|null, found:string[], missing:string[]}>}
- */
-export async function traceFromPlan(plan, { near, signal, onStep = () => {} } = {}) {
-  onStep('ville');
-  let city = null;
-  if (plan.ville) {
-    city = await geocode({ q: plan.ville + (plan.cp ? ' ' + plan.cp : ''), type: 'municipality', ...(near ? { lon: near[0], lat: near[1] } : {}) }, signal);
+// Projection locale en mètres autour d'un point.
+function local(o) {
+  const kx = 111320 * Math.cos((o[1] * Math.PI) / 180), ky = 110540;
+  return { to: (p) => [(p[0] - o[0]) * kx, (p[1] - o[1]) * ky], from: (q) => [o[0] + q[0] / kx, o[1] + q[1] / ky] };
+}
+
+// Contour formé par les rues de bordure : depuis un point intérieur, on lance des rayons
+// et chacun s'arrête sur la première rue de bordure rencontrée.
+export function enclose(seed, lines, { rays = 120, maxR = 1600, pad = 18 } = {}) {
+  const L = local(seed);
+  const segs = [];
+  for (const line of lines) for (let i = 0; i < line.length - 1; i++) segs.push([L.to(line[i]), L.to(line[i + 1])]);
+  const hits = [];
+  for (let k = 0; k < rays; k++) {
+    const a = (k / rays) * 2 * Math.PI, dx = Math.cos(a), dy = Math.sin(a);
+    let best = Infinity;
+    for (const [p, q] of segs) {
+      const ex = q[0] - p[0], ey = q[1] - p[1];
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = (p[0] * ey - p[1] * ex) / den; // distance le long du rayon
+      const u = (p[0] * dy - p[1] * dx) / den; // position sur le segment
+      if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
+    }
+    hits.push(best <= maxR ? best : null);
   }
+  const found = hits.filter((h) => h != null);
+  if (found.length < rays * 0.5) return null; // contour trop ouvert : on ne devine pas
+  // Trous dans le contour : on reprend la distance des rayons voisins.
+  const fill = hits.map((h, i) => {
+    if (h != null) return h;
+    for (let d = 1; d < rays / 2; d++) {
+      const a = hits[(i - d + rays) % rays], b = hits[(i + d) % rays];
+      if (a != null || b != null) return Math.min(a ?? Infinity, b ?? Infinity);
+    }
+    return maxR;
+  });
+  const ring = fill.map((r, k) => { const a = (k / rays) * 2 * Math.PI; return L.from([Math.cos(a) * (r + pad), Math.sin(a) * (r + pad)]); });
+  return simplify(ring, 36);
+}
+
+const cityOf = async (plan, near, signal) => (plan.ville ? geocode({ q: plan.ville + (plan.cp ? ' ' + plan.cp : ''), type: 'municipality', ...(near ? { lon: near[0], lat: near[1] } : {}) }, signal) : null);
+
+/** Choisit le secteur du plan : celui qui porte le nom demandé, sinon le premier. */
+export function pickSector(plan, wanted) {
+  const list = plan.secteurs?.length ? plan.secteurs : [{ nom: null, bord: plan.zone || [], dedans: [] }];
+  const k = (s) => norm(s).replace(/\s/g, '');
+  if (wanted != null) {
+    const w = typeof wanted === 'number' ? list[wanted] : list.find((s) => s.nom && k(s.nom) === k(wanted));
+    if (w) return w;
+  }
+  return list[0];
+}
+
+/**
+ * @param {{ville?:string|null, cp?:string|null, secteurs?:{nom:string|null,bord:string[],dedans:string[]}[], zone?:string[], adresses?:string[]}} plan
+ * @returns {Promise<{points:[number,number][], city:string|null, found:string[], missing:string[], how:'rues'|'numeros'}>}
+ */
+export async function traceFromPlan(plan, { near, signal, sector, onStep = () => {} } = {}) {
+  onStep('ville');
+  const city = await cityOf(plan, near, signal);
   const center = city?.p || near;
   if (!center) throw Object.assign(new Error('no_city'), { code: 'no_city' });
   const around = { lon: String(center[0]), lat: String(center[1]) };
   const inCity = city?.citycode ? { citycode: city.citycode } : {};
+  const s = pickSector(plan, sector);
 
   onStep('rues');
-  const names = (plan.zone?.length ? plan.zone : plan.rues || []).slice(0, 16);
-  const streets = await Promise.all(names.map((n) => geocode({ q: n + (plan.ville ? ' ' + plan.ville : ''), type: 'street', ...inCity, ...around }, signal).catch(() => null)));
-  const found = [], missing = [], keep = [];
-  streets.forEach((s, i) => {
-    if (s && alike(names[i], s.name) >= 0.5 && distM(s.p, center) < 9000) { found.push(s.name); keep.push(s); }
-    else missing.push(names[i]);
-  });
-  const addrs = await Promise.all((plan.adresses || []).slice(0, 12).map((q) => geocode({ q: q + (plan.ville ? ' ' + plan.ville : ''), type: 'housenumber', ...inCity, ...around }, signal).catch(() => null)));
-  const extra = addrs.filter((a) => a && (a.score ?? 1) > 0.5 && distM(a.p, center) < 9000).map((a) => a.p);
-  if (!keep.length && !extra.length) throw Object.assign(new Error('no_street'), { code: 'no_street' });
+  const look = async (n) => {
+    const g = await geocode({ q: n + (plan.ville ? ' ' + plan.ville : ''), type: 'street', ...inCity, ...around }, signal).catch(() => null);
+    return g && alike(n, g.name) >= 0.5 && distM(g.p, center) < 9000 ? g : null;
+  };
+  const [bord, dedans] = await Promise.all([Promise.all(s.bord.slice(0, 14).map(look)), Promise.all(s.dedans.slice(0, 10).map(look))]);
+  const found = [], missing = [];
+  const add = (list, names) => list.forEach((g, i) => { if (g) { if (!found.includes(g.name)) found.push(g.name); } else missing.push(names[i]); });
+  add(bord, s.bord); add(dedans, s.dedans);
+  const B = bord.filter(Boolean), D = dedans.filter(Boolean);
+  if (!B.length && !D.length) throw Object.assign(new Error('no_street'), { code: 'no_street' });
 
-  // Tous les numéros des rues trouvées, autour de leur position.
+  // Point de départ à l'intérieur : le milieu des rues intérieures, sinon celui des rues du bord.
+  const ref = (D.length ? D : B).map((g) => g.p);
+  const seed = [ref.reduce((a, p) => a + p[0], 0) / ref.length, ref.reduce((a, p) => a + p[1], 0) / ref.length];
+
+  // 1 · Le contour suit les vraies rues de bordure (BD TOPO).
   onStep('numeros');
-  const ref = [...keep.map((s) => s.p), ...extra];
-  const xs = ref.map((q) => q[0]), ys = ref.map((q) => q[1]);
-  const mid = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
-  const half = 0.012; // ≈ 1 km autour du centre des rues au plus
-  const b = [Math.max(Math.min(...xs) - 0.006, mid[0] - half * 1.4), Math.max(Math.min(...ys) - 0.004, mid[1] - half), Math.min(Math.max(...xs) + 0.006, mid[0] + half * 1.4), Math.min(Math.max(...ys) + 0.004, mid[1] + half)];
-  const want = new Set(keep.map((s) => norm(s.name)));
+  if (B.length >= 2) {
+    const r = 0.022;
+    const box = [seed[0] - r * 1.45, seed[1] - r, seed[0] + r * 1.45, seed[1] + r];
+    const roads = await getAll('BDTOPO_V3:troncon_de_route', box, { props: 'nom_collaboratif_gauche,nom_collaboratif_droite,geometrie' }, signal).catch(() => []);
+    const want = B.map((g) => g.name);
+    const lines = [];
+    for (const f of roads) {
+      const p = f.properties || {};
+      const n = [p.nom_collaboratif_gauche, p.nom_collaboratif_droite].filter(Boolean).map(niceName);
+      if (!n.some((x) => want.some((w) => alike(w, x) >= 0.75))) continue;
+      const g = f.geometry;
+      for (const line of g?.type === 'LineString' ? [g.coordinates] : g?.type === 'MultiLineString' ? g.coordinates : []) lines.push(line);
+    }
+    const ring = lines.length ? enclose(seed, lines) : null;
+    if (ring && ring.length >= 3) return { points: ring, city: city?.city || city?.name || plan.ville || null, found, missing, how: 'rues' };
+  }
+
+  // 2 · Sinon : l'enveloppe des numéros des rues trouvées.
+  const xs = [...B, ...D].map((g) => g.p[0]), ys = [...B, ...D].map((g) => g.p[1]);
+  const b = [Math.max(Math.min(...xs) - 0.006, seed[0] - 0.017), Math.max(Math.min(...ys) - 0.004, seed[1] - 0.012), Math.min(Math.max(...xs) + 0.006, seed[0] + 0.017), Math.min(Math.max(...ys) + 0.004, seed[1] + 0.012)];
+  const names = new Set([...B, ...D].map((g) => norm(g.name)));
   const ban = await getAll('BAN.DATA.GOUV:ban', b, { props: 'numero,nom_voie,code_insee,lon,lat' }, signal);
-  const pts = [...extra];
+  const pts = [];
   for (const f of ban) {
     const p = f.properties || {};
-    if (!want.has(norm(p.nom_voie))) continue;
+    if (!names.has(norm(p.nom_voie))) continue;
     if (city?.citycode && p.code_insee && p.code_insee !== city.citycode) continue;
     pts.push([+p.lon, +p.lat]);
   }
-  // Une rue sans numéro chargé compte quand même par son point central.
-  for (const s of keep) if (!pts.some((q) => distM(q, s.p) < 400)) pts.push(s.p);
-  const points = simplify(hull(pad(pts)), 12);
-  return { points, city: city?.city || city?.name || plan.ville || null, found, missing };
+  for (const g of [...B, ...D]) if (!pts.some((q) => distM(q, g.p) < 400)) pts.push(g.p);
+  return { points: simplify(hull(pad(pts)), 12), city: city?.city || city?.name || plan.ville || null, found, missing, how: 'numeros' };
 }

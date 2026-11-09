@@ -205,35 +205,75 @@ async function exportTeam(env, user, teamId) {
 }
 
 // ——— Lecture d'une photo de plan (Workers AI) ———
-export const PLAN_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct';
-const PLAN_PROMPT = `Photo d'un plan de secteur pour une tournée de calendriers de sapeurs-pompiers en France.
-Lis le plan et réponds UNIQUEMENT avec ce JSON, sans texte autour :
-{"ville": "nom de la commune (ou null)", "code_postal": "si lisible, sinon null", "zone": ["rues qui bordent ou traversent la zone entourée, surlignée ou coloriée"], "rues": ["toutes les autres rues lisibles"], "adresses": ["adresses complètes lisibles, ex. 12 rue X"]}
-Si aucune zone n'est marquée, mets toutes les rues dans "zone". Écris les noms complets (Rue, Avenue, Allée…).`;
+// Deux modèles lisent la photo en parallèle ; on croise leurs réponses.
+export const PLAN_MODELS = ['@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/meta/llama-4-scout-17b-16e-instruct'];
+const PLAN_PROMPT = `Photo d'un plan de quartier en France, utilisé pour une tournée de calendriers de sapeurs-pompiers.
+Un ou plusieurs secteurs y sont entourés au feutre, souvent avec un nom écrit sur un post-it ou à la main.
+Lis les noms de rues IMPRIMÉS sur le plan, exactement comme ils sont écrits (abréviations : Av = Avenue, All = Allée, Pl = Place, Mte = Montée, Bd = Boulevard, Imp = Impasse, Che = Chemin). N'invente aucun nom.
+Réponds UNIQUEMENT avec ce JSON compact, sans texte autour :
+{"ville":"commune ou null","code_postal":"ou null","secteurs":[{"nom":"nom du secteur (post-it) ou null","bord":["rues le long desquelles passe le trait du contour"],"dedans":["rues entièrement à l'intérieur du contour"]}],"rues":["toutes les autres rues lisibles"]}`;
+
+const cleanList = (v, max = 40) => [...new Set((Array.isArray(v) ? v : []).map((x) => String(x || '').trim()).filter((x) => x.length > 2 && x.length < 120))].slice(0, max);
+const cleanStr = (v) => (v && typeof v === 'string' && v.trim() && !/^(null|inconnu|n\/a)$/i.test(v.trim()) ? v.trim().slice(0, 80) : null);
 
 export function parsePlan(text) {
   const m = String(text || '').match(/\{[\s\S]*\}/);
   if (!m) return null;
   let j;
   try { j = JSON.parse(m[0]); } catch { return null; }
-  const list = (v) => (Array.isArray(v) ? v : []).map((x) => String(x || '').trim()).filter((x) => x.length > 2 && x.length < 120).slice(0, 40);
-  const str = (v) => (v && typeof v === 'string' && v.trim() && v.trim().toLowerCase() !== 'null' ? v.trim().slice(0, 80) : null);
-  const zone = list(j.zone || j.zone_rues);
-  const rues = list(j.rues).filter((r) => !zone.includes(r));
-  return { ville: str(j.ville), cp: str(j.code_postal), zone, rues, adresses: list(j.adresses).slice(0, 20) };
+  let secteurs = (Array.isArray(j.secteurs) ? j.secteurs : []).map((x) => ({
+    nom: cleanStr(x?.nom), bord: cleanList(x?.bord || x?.rues_bord), dedans: cleanList(x?.dedans || x?.rues_dedans),
+  })).filter((x) => x.bord.length || x.dedans.length).slice(0, 8);
+  const zone = cleanList(j.zone || j.zone_rues);
+  if (!secteurs.length && zone.length) secteurs = [{ nom: null, bord: zone, dedans: [] }];
+  const used = new Set(secteurs.flatMap((x) => [...x.bord, ...x.dedans]));
+  return {
+    ville: cleanStr(j.ville), cp: cleanStr(j.code_postal), secteurs,
+    zone: secteurs[0] ? [...secteurs[0].bord, ...secteurs[0].dedans] : zone,
+    rues: cleanList(j.rues).filter((r) => !used.has(r)), adresses: cleanList(j.adresses, 20),
+  };
+}
+
+const keyName = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Réunit les lectures : mêmes secteurs (par nom, ou dans l'ordre), rues mises en commun.
+export function mergePlans(plans) {
+  const ok = plans.filter(Boolean);
+  if (!ok.length) return null;
+  const out = { ville: null, cp: null, secteurs: [], rues: [], adresses: [] };
+  for (const p of ok) {
+    out.ville ||= p.ville; out.cp ||= p.cp;
+    p.secteurs.forEach((s, i) => {
+      const k = keyName(s.nom);
+      let t = out.secteurs.find((x) => k && keyName(x.nom) === k) || (!k && out.secteurs[i] && !out.secteurs[i].nom ? out.secteurs[i] : null);
+      if (!t) { t = { nom: s.nom, bord: [], dedans: [], votes: 0 }; out.secteurs.push(t); }
+      t.votes++;
+      for (const r of s.bord) if (!t.bord.some((x) => keyName(x) === keyName(r))) t.bord.push(r);
+      for (const r of s.dedans) if (!t.dedans.some((x) => keyName(x) === keyName(r))) t.dedans.push(r);
+    });
+    for (const r of p.rues) if (!out.rues.some((x) => keyName(x) === keyName(r))) out.rues.push(r);
+    for (const r of p.adresses) if (!out.adresses.includes(r)) out.adresses.push(r);
+  }
+  out.secteurs.sort((a, b) => b.votes - a.votes);
+  out.secteurs = out.secteurs.slice(0, 8).map(({ votes, ...s }) => s);
+  out.zone = out.secteurs[0] ? [...out.secteurs[0].bord, ...out.secteurs[0].dedans] : [];
+  return out;
 }
 
 async function readPlan(env, b) {
   const img = String(b.image || '');
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2.5 * 1024 * 1024) throw new HttpError(400, 'bad_image');
   if (!env.AI) throw new HttpError(503, 'no_ai');
-  const r = await env.AI.run(PLAN_MODEL, {
-    messages: [{ role: 'user', content: [{ type: 'text', text: PLAN_PROMPT }, { type: 'image_url', image_url: { url: img } }] }],
-    max_tokens: 700, temperature: 0.1,
-  });
-  const text = r?.response ?? r?.choices?.[0]?.message?.content ?? '';
-  const plan = parsePlan(typeof text === 'string' ? text : JSON.stringify(text));
-  if (!plan) throw new HttpError(422, 'unreadable');
+  const ask = async (model) => {
+    const r = await env.AI.run(model, {
+      messages: [{ role: 'user', content: [{ type: 'text', text: PLAN_PROMPT }, { type: 'image_url', image_url: { url: img } }] }],
+      max_tokens: 1200, temperature: 0.1,
+    });
+    const text = r?.response ?? r?.choices?.[0]?.message?.content ?? '';
+    return parsePlan(typeof text === 'string' ? text : JSON.stringify(text));
+  };
+  const res = await Promise.allSettled(PLAN_MODELS.map(ask));
+  const plan = mergePlans(res.map((x) => (x.status === 'fulfilled' ? x.value : null)));
+  if (!plan || !plan.secteurs.length) throw new HttpError(422, 'unreadable');
   return plan;
 }
 
