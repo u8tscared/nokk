@@ -112,7 +112,7 @@ export function MapView({ onDoor, visible = true }) {
     });
     mapInstance = map;
     window.__nokkMap = map;
-    map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap · OpenFreeMap' }), 'bottom-left');
+    map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap · OpenFreeMap' }), 'top-left');
     map.touchZoomRotate.disableRotation();
 
     let ready = false;
