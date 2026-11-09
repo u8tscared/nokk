@@ -8,7 +8,7 @@ import { openSheet, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { shareFile } from '../lib/share.js';
 import { openDoor } from './DoorSheet.jsx';
-import { qrReady, loadFeatures, ensureQr, qrUrl, callbacks, openCallbacks, setCallback, slotLabel, slotDay, slotHours } from '../lib/callbacks.js';
+import { qrReady, serverFeatures, loadFeatures, ensureQr, qrUrl, callbacks, openCallbacks, setCallback, slotLabel, slotDay, slotHours } from '../lib/callbacks.js';
 
 export function openQrCards(s) {
   loadFeatures();
@@ -46,6 +46,8 @@ function QrCards({ sid }) {
       </ol>
       {!online ? (
         <p class="small note-line"><Icon name="lock" size={16} /> Connectez-vous dans Réglages : les réponses des habitants arrivent par la sauvegarde en ligne.</p>
+      ) : !ready && serverFeatures.value === null ? (
+        <p class="small note-line"><Icon name="wifiOff" size={16} /> Il faut du réseau pour préparer les cartes. Réessayez une fois connecté.</p>
       ) : !ready ? (
         <p class="small note-line" data-testid="qr-soon"><Icon name="clock" size={16} /> Bientôt disponible : le serveur Nokk est en cours de mise à jour pour recevoir les réponses.</p>
       ) : null}

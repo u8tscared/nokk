@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { effect, signal } from '@preact/signals';
+import { liveTeams } from '../lib/live.js';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { buildStyle, overlayLayers, tokens } from '../lib/mapstyle.js';
@@ -155,9 +156,7 @@ export function MapView({ onDoor, visible = true }) {
     const nextEl = el('next-marker', '<span></span>');
     const nextMarker = new maplibregl.Marker({ element: nextEl });
     nextEl.addEventListener('click', (ev) => { ev.stopPropagation(); const n = nextDoor.value; if (n) onDoor?.(n.id); });
-    const teamEl = el('team-marker');
-    const teamMarker = new maplibregl.Marker({ element: teamEl, anchor: 'bottom' });
-
+    const teamMarkers = new Map(); // un marqueur par binôme sur le terrain
     // Mise à jour des données (sans rejouer d'animation)
     disposers.push(effect(() => {
       const src = sourcesData();
@@ -179,20 +178,18 @@ export function MapView({ onDoor, visible = true }) {
       nextMarker.setLngLat(n.p).addTo(map);
     }));
     disposers.push(effect(() => {
-      // Équipe en direct : dernière porte d'un binôme qui n'est pas le mien, il y a moins de 15 min
-      const d = data.value;
-      const crew = new Set(d.crew || []);
-      const recent = [...d.visits].reverse().find((v) => Date.now() - v.ts < 15 * 60e3 && !(v.by || []).some((b) => crew.has(b)));
-      if (!recent) { teamMarker.remove(); return; }
-      const door = d.doors.find((x) => x.id === recent.doorId);
-      if (!door) { teamMarker.remove(); return; }
-      const names = (recent.by || []).map((id) => memberById.value.get(id)).filter(Boolean);
-      const mins = Math.max(1, Math.round((Date.now() - recent.ts) / 60e3));
-      const sect = d.sectors.find((s) => s.id === recent.sectorId);
-      const sum = d.visits.filter((v) => v.sectorId === recent.sectorId && v.result === 'donne' && new Date(v.ts).toDateString() === new Date().toDateString()).reduce((s, v) => s + v.amount, 0);
-      teamEl.innerHTML = `<div class="tm-card"><div class="tm-top">${names.map((m) => m.name.split(' ')[0]).join(' · ')} · il y a ${mins} min</div><div class="tm-main">${door.street} · ${(sum / 100).toLocaleString('fr-FR')} €</div></div><div class="tm-dot"></div>`;
-      teamEl.title = sect ? sect.name : '';
-      teamMarker.setLngLat(door.p).addTo(map);
+      // Équipes en direct : position partagée par leur tournée, sinon leur dernière porte (moins de 15 min).
+      const teams = liveTeams.value;
+      const keep = new Set();
+      for (const g of teams) {
+        keep.add(g.key);
+        let m = teamMarkers.get(g.key);
+        if (!m) { const e = el('team-marker'); m = { e, marker: new maplibregl.Marker({ element: e, anchor: 'bottom' }) }; teamMarkers.set(g.key, m); }
+        const when = g.mins < 1 ? "à l'instant" : `il y a ${g.mins} min`;
+        m.e.innerHTML = `<div class="tm-card"><div class="tm-top">${g.names.map(escapeHtml).join(' · ')} · ${when}</div><div class="tm-main">${g.where ? escapeHtml(g.where) + ' · ' : ''}${(g.sum / 100).toLocaleString('fr-FR')} €</div></div><div class="tm-dot${g.live ? ' live' : ''}"></div>`;
+        m.marker.setLngLat(g.p).addTo(map);
+      }
+      for (const [k, m] of teamMarkers) if (!keep.has(k)) { m.marker.remove(); teamMarkers.delete(k); }
     }));
     // Changement de thème : on recolore la carte.
     const mo = new MutationObserver(() => restyle());
@@ -220,3 +217,5 @@ export function MapView({ onDoor, visible = true }) {
 
   return <div ref={box} class="map-box" data-free aria-label="Carte du secteur" role="region" />;
 }
+
+function escapeHtml(x) { return String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }

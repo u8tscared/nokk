@@ -21,6 +21,7 @@ installFreeze();
 installOnline();
 resumeGeoIfGranted();
 captureRef();
+import('./lib/live.js').then((m) => m.installLiveShare());
 import('./lib/callbacks.js').then((m) => m.loadFeatures());
 bootAccount();
 

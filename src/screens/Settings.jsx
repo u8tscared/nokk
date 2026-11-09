@@ -46,6 +46,7 @@ export function SettingsScreen() {
       <div class="card tight list">
         <Toggle id="snd" label="Son" sub="Petits sons discrets à chaque geste" icon="sound" checked={s.sound} onChange={(v) => saveSettings({ sound: v })} />
         <Toggle id="vib" label="Vibration" sub="Android seulement, l'iPhone ne vibre pas depuis le web" icon="phone" checked={s.haptics} onChange={(v) => saveSettings({ haptics: v })} />
+        <Toggle id="live" label="Position partagée en tournée" sub="L'équipe voit où est votre binôme, seulement pendant une tournée lancée" icon="locate" checked={s.shareLive !== false} onChange={(v) => saveSettings({ shareLive: v })} />
         <Toggle id="simple" label="Vue simple" sub="Seulement carte, saisie, caisse" icon="eye" tone="info" checked={s.simple} onChange={(v) => saveSettings({ simple: v })} />
       </div>
       <div class="card">
