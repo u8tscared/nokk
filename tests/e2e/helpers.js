@@ -7,8 +7,10 @@ export async function startDemo(page) {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.getByTestId('demo').click();
-  await expect(page.getByTestId('screen-carte')).toBeVisible();
+  await page.getByTestId('demo-caserne').click();
   await page.waitForFunction(() => window.__nokk?.store.demo.value === true);
+  await page.evaluate(() => window.__nokk.nav.go('carte'));
+  await expect(page.getByTestId('screen-carte')).toBeVisible();
   return errors;
 }
 

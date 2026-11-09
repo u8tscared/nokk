@@ -98,9 +98,24 @@ test('clôturer la campagne : chaque porte garde son année, le journal repart �
   expect(after.door.history[before.year]).toBeTruthy();
 });
 
-test('lien #demo : la démo s\'ouvre directement', async ({ page }) => {
+test('démo en deux modes : pompier sur la carte, caserne sur les secteurs, et on passe de l\'un à l\'autre', async ({ page }) => {
   await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.goto('/#demo');
+  await expect(page.getByTestId('demo-chooser')).toBeVisible();
+  await shot(page, 'demo-choix');
+  await page.getByTestId('demo-pompier').click();
+  await expect(page.locator('[data-testid=start-tour]:visible')).toBeVisible({ timeout: 15000 });
+  expect(await page.evaluate(() => window.__nokk.store.me.value.role)).toBe('pompier');
+  await page.evaluate(() => window.__nokk.nav.go('caisse'));
+  await page.getByTestId('demo-switch').click();
+  await expect(page.getByTestId('sector-board')).toBeVisible();
+  expect(await page.evaluate(() => window.__nokk.store.me.value.role)).toBe('chef');
+  await shot(page, 'demo-caserne');
+});
+
+test('lien #demo-pompier : la démo pompier s\'ouvre directement', async ({ page }) => {
+  await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await page.goto('/#demo-pompier');
   await expect(page.locator('[data-testid=start-tour]:visible')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => window.__nokk.store.demo.value)).toBe(true);
 });

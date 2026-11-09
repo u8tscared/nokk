@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import { Icon, Logo, Wordmark } from '../ui/icons.jsx';
 import { Button, Field, Avatar, toast, confetti, shake, DotIcon } from '../ui/ui.jsx';
 import { data, setData, addMember, setOrg, mergeData, switchUser, setCrew, enterDemo, addStock } from '../lib/store.js';
@@ -12,8 +13,27 @@ import { PinPad } from './Team.jsx';
 import { SignIn } from './Account.jsx';
 import { pendingJoin, account, createTeamOnline } from '../lib/account.js';
 
+export const demoAsk = signal(false);
+
+// Deux démos : pompier (sur le terrain) ou caserne (secteurs, équipes, comptes).
 export function DemoButton({ kind = 'ghost' }) {
-  return <Button kind={kind + ' full'} icon="eye" onClick={startDemo} data-testid="demo">Essayer la démo</Button>;
+  const open = demoAsk.value;
+  if (!open) return <Button kind={kind + ' full'} icon="eye" onClick={() => { feel('tap'); demoAsk.value = true; }} data-testid="demo">Essayer la démo</Button>;
+  return (
+    <div class="demo-chooser stack s8" data-testid="demo-chooser" ref={(el) => el && !el.dataset.seen && (el.dataset.seen = '1', setTimeout(() => el.scrollIntoView({ block: 'end', behavior: 'smooth' }), 350))}>
+      <div class="tiny muted center">Démo : rien n'est enregistré. Vous êtes…</div>
+      <button class="choice" onClick={() => startDemo('pompier')} data-testid="demo-pompier">
+        <DotIcon icon="walk" tone="bad" />
+        <span class="grow"><b>Pompier en tournée</b><span class="small muted" style={{ display: 'block' }}>La carte, le parcours porte à porte, un don en un toucher, votre caisse.</span></span>
+        <Icon name="chevR" class="chev" />
+      </button>
+      <button class="choice" onClick={() => startDemo('caserne')} data-testid="demo-caserne">
+        <DotIcon icon="flag" tone="info" />
+        <span class="grow"><b>Chef de caserne</b><span class="small muted" style={{ display: 'block' }}>Les secteurs tracés depuis un plan, les binômes affectés, l'avancement et les comptes de l'amicale.</span></span>
+        <Icon name="chevR" class="chev" />
+      </button>
+    </div>
+  );
 }
 
 function WelcomeArt() {

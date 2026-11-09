@@ -24,7 +24,8 @@ captureRef();
 bootAccount();
 
 render(<App />, document.getElementById('app'));
-if (wantsDemo) import('./lib/demoMode.js').then((m) => m.startDemo());
+if (wantsDemo === 'demo') import('./screens/Welcome.jsx').then((m) => { m.demoAsk.value = true; });
+else if (wantsDemo) import('./lib/demoMode.js').then((m) => m.startDemo(wantsDemo.slice(5)));
 
 // Écran d'ouverture court.
 const splash = document.getElementById('splash');

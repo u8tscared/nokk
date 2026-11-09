@@ -13,6 +13,7 @@ const euro = (c) => formatEuro(c);
 
 import { ToursCard } from './Tour.jsx';
 import { SoonCard } from './Start.jsx';
+import { startDemo, demoMode } from '../lib/demoMode.js';
 
 // ——— Caisse ———
 
@@ -120,7 +121,7 @@ export function PageStatus() {
   return (
     <div class="page-status">
       {off && <span><i /> Hors ligne · tout est gardé</span>}
-      {demo.value && <span class="demo"><i /> Mode démo</span>}
+      {demo.value && <button class="demo" onClick={() => startDemo(demoMode.value === 'pompier' ? 'caserne' : 'pompier')} data-testid="demo-switch"><i /> Démo {demoMode.value} · passer en {demoMode.value === 'pompier' ? 'caserne' : 'pompier'}</button>}
     </div>
   );
 }

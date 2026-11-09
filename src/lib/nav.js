@@ -62,7 +62,7 @@ if (/^join=/.test(initial)) {
   initial = 'carte';
 }
 // Lien profond vers la démo (depuis la page de présentation).
-export const wantsDemo = initial === 'demo';
+export const wantsDemo = /^demo(-pompier|-caserne)?$/.test(initial) ? initial : null;
 if (wantsDemo) initial = 'carte';
 export const route = signal(initial || 'carte');
 export const sheets = signal([]); // [{ id, render, opts }]

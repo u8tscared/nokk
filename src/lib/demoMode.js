@@ -5,18 +5,24 @@ import { go } from './nav.js';
 import { toast } from '../ui/ui.jsx';
 import { feel } from './feedback.js';
 import { fakePosition } from './geoloc.js';
-import { effect } from '@preact/signals';
+import { effect, signal } from '@preact/signals';
 
 let timer = 0;
 let routes = {};
 
-export async function startDemo() {
+export const demoMode = signal('caserne');
+
+// Deux démos : le pompier (Inès, sur le terrain) ou la caserne (Lucas, chef : secteurs, équipes, comptes).
+export async function startDemo(mode = 'caserne') {
   feel('tap');
-  const { data: d, routes: r } = await buildDemo(Date.now());
+  if (typeof mode !== 'string') mode = 'caserne';
+  const { data: d0, routes: r } = await buildDemo(Date.now());
   routes = r;
+  const d = mode === 'pompier' ? { ...d0, meId: 'm-ines', crew: ['m-ines', 'm-lucas'] } : d0;
+  demoMode.value = mode;
   enterDemo(d);
-  go('carte', { replace: true });
-  toast('Démo : rien de ce que vous faites n\'est enregistré');
+  go(mode === 'pompier' ? 'carte' : 'secteurs', { replace: true });
+  toast(mode === 'pompier' ? 'Démo pompier : vous êtes Inès, en tournée ce soir' : 'Démo caserne : vous êtes Lucas, chef d\'équipe');
   // Position simulée : à quelques mètres de la porte suivante du secteur 4.
   const next = d.doors.find((x) => x.id === r['sec-4'].find((id) => !d.visits.some((v) => v.doorId === id)));
   if (next) fakePosition([next.p[0] - 0.00035, next.p[1] + 0.0002], 9);

@@ -128,10 +128,10 @@
 
 /* ——— Statuts dans la page (au lieu de capsules flottantes) ——— */
 .page-status { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 2px; }
-.page-status span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 99px; font-size: 12.5px; font-weight: 750; background: var(--ink); color: var(--on-ink); }
-.page-status span i { width: 7px; height: 7px; border-radius: 50%; background: var(--st-repasser); }
-.page-status span.demo { background: var(--accent-2-tint); color: var(--accent-2-ink); }
-.page-status span.demo i { background: var(--accent-2); }
+.page-status span, .page-status button.demo { border: 0; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 99px; font-size: 12.5px; font-weight: 750; background: var(--ink); color: var(--on-ink); }
+.page-status span i, .page-status button i { width: 7px; height: 7px; border-radius: 50%; background: var(--st-repasser); }
+.page-status .demo { background: var(--accent-2-tint); color: var(--accent-2-ink); }
+.page-status .demo i { background: var(--accent-2); }
 
 /* ——— Caisse ——— */
 .caisse-page { padding-bottom: 96px; }
