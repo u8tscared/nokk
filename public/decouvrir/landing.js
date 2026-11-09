@@ -51,8 +51,8 @@
       io.unobserve(e.target);
     });
   }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 }) : null;
-  $$('.reveal, .card, .dash-wrap, .off-demo, .tour').forEach(function (el, i) {
-    if (el.closest('.hero') && !el.classList.contains('tour')) return;
+  $$('.reveal, .card, .dash-wrap, .off-demo').forEach(function (el, i) {
+    if (el.closest('.hero')) return;
     if (!io) { el.classList.add('in'); return; }
     // petit décalage entre voisins
     var sib = el.parentElement ? Array.prototype.indexOf.call(el.parentElement.children, el) : 0;
