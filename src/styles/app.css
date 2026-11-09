@@ -1,6 +1,12 @@
 /* ——— Base ——— */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+/* iOS 26, app installée (viewport-fit=cover + barre d'état translucide) : la fenêtre démarre plus courte que
+   l'écran de la hauteur de la barre d'état, et WebKit ne dessine rien en dessous (bande vide en bas).
+   Une page au moins aussi haute que l'écran récupère toute la hauteur ; 100lvh évite tout défilement. */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top, 0px))); }
+}
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   font-family: var(--f);
@@ -40,8 +46,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* ——— Cadre de l'app ——— */
 .app {
   position: fixed; inset: 0;
-  /* iOS 26 (app installée) : la fenêtre s'arrête trop haut ; --vgap comble l'écart (voir main.jsx). */
-  bottom: calc(0px - var(--vgap, 0px));
   display: grid;
   grid-template-columns: 1fr;
 }
@@ -237,7 +241,7 @@ button.row:active, a.row:active { background: var(--well); }
 .tabbar {
   position: fixed; z-index: 40;
   left: max(12px, var(--safe-l)); right: max(12px, var(--safe-r));
-  bottom: calc(max(10px, var(--safe-b)) - var(--vgap, 0px));
+  bottom: max(10px, var(--safe-b));
   height: var(--tabbar-h);
   max-width: 560px; margin: 0 auto;
   display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
@@ -285,7 +289,7 @@ button.row:active, a.row:active { background: var(--well); }
 }
 
 /* ——— Fenêtres du bas ——— */
-.sheet-layer { position: fixed; inset: 0; bottom: calc(0px - var(--vgap, 0px)); z-index: 80; pointer-events: none; }
+.sheet-layer { position: fixed; inset: 0; bottom: calc(0px); z-index: 80; pointer-events: none; }
 .sheet-scrim { position: absolute; inset: 0; background: var(--scrim); pointer-events: auto; animation: fade var(--t-mid) var(--ease) both; }
 .sheet-scrim.out { animation: fadeout var(--t-mid) var(--ease) both; }
 @keyframes fade { from { opacity: 0; } }
@@ -342,7 +346,7 @@ button.row:active, a.row:active { background: var(--well); }
 
 /* Capsule hors ligne */
 .capsule {
-  position: fixed; z-index: 70; left: max(12px, var(--safe-l)); bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 12px - var(--vgap, 0px)); white-space: nowrap; pointer-events: none;
+  position: fixed; z-index: 70; left: max(12px, var(--safe-l)); bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 12px); white-space: nowrap; pointer-events: none;
   display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 99px;
   background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700; box-shadow: var(--sh-float);
   animation: toastin var(--t-mid) var(--spring-soft) both;
