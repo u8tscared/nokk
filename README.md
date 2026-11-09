@@ -4,6 +4,8 @@ L’app des tournées de calendriers des sapeurs-pompiers. Une app web installab
 
 **Ouvrir l’app :** https://u8tscared.github.io/nokk/
 
+**Présentation (landing) :** https://u8tscared.github.io/nokk/decouvrir/ (fichiers statiques dans `public/decouvrir/`)
+
 Sur iPhone : Safari → Partager → « Sur l’écran d’accueil ». Sur Android : Chrome → « Installer l’application ».
 
 ## Essayer en 1 minute
