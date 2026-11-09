@@ -204,6 +204,39 @@ async function exportTeam(env, user, teamId) {
   return out;
 }
 
+// ——— Lecture d'une photo de plan (Workers AI) ———
+export const PLAN_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct';
+const PLAN_PROMPT = `Photo d'un plan de secteur pour une tournée de calendriers de sapeurs-pompiers en France.
+Lis le plan et réponds UNIQUEMENT avec ce JSON, sans texte autour :
+{"ville": "nom de la commune (ou null)", "code_postal": "si lisible, sinon null", "zone": ["rues qui bordent ou traversent la zone entourée, surlignée ou coloriée"], "rues": ["toutes les autres rues lisibles"], "adresses": ["adresses complètes lisibles, ex. 12 rue X"]}
+Si aucune zone n'est marquée, mets toutes les rues dans "zone". Écris les noms complets (Rue, Avenue, Allée…).`;
+
+export function parsePlan(text) {
+  const m = String(text || '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  let j;
+  try { j = JSON.parse(m[0]); } catch { return null; }
+  const list = (v) => (Array.isArray(v) ? v : []).map((x) => String(x || '').trim()).filter((x) => x.length > 2 && x.length < 120).slice(0, 40);
+  const str = (v) => (v && typeof v === 'string' && v.trim() && v.trim().toLowerCase() !== 'null' ? v.trim().slice(0, 80) : null);
+  const zone = list(j.zone || j.zone_rues);
+  const rues = list(j.rues).filter((r) => !zone.includes(r));
+  return { ville: str(j.ville), cp: str(j.code_postal), zone, rues, adresses: list(j.adresses).slice(0, 20) };
+}
+
+async function readPlan(env, b) {
+  const img = String(b.image || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2.5 * 1024 * 1024) throw new HttpError(400, 'bad_image');
+  if (!env.AI) throw new HttpError(503, 'no_ai');
+  const r = await env.AI.run(PLAN_MODEL, {
+    messages: [{ role: 'user', content: [{ type: 'text', text: PLAN_PROMPT }, { type: 'image_url', image_url: { url: img } }] }],
+    max_tokens: 700, temperature: 0.1,
+  });
+  const text = r?.response ?? r?.choices?.[0]?.message?.content ?? '';
+  const plan = parsePlan(typeof text === 'string' ? text : JSON.stringify(text));
+  if (!plan) throw new HttpError(422, 'unreadable');
+  return plan;
+}
+
 export default {
   async fetch(req, env) {
     const h = cors(req, env);
@@ -214,6 +247,11 @@ export default {
       if (path === '/' || path === '/health') {
         const r = await env.DB.prepare('SELECT COUNT(*) AS n FROM teams').first();
         return json({ ok: true, app: 'nokk-api', teams: r?.n ?? 0 }, 200, h);
+      }
+      // Lecture de plan : aussi sans compte, mais seulement depuis l'app.
+      if (path === '/plan/read' && req.method === 'POST') {
+        if (!allowedOrigin(req.headers.get('origin'), env)) throw new HttpError(403, 'origin');
+        return json(await readPlan(env, await body(req)), 200, h);
       }
       const auth = req.headers.get('authorization') || '';
       const user = await verifyToken(auth.replace(/^Bearer\s+/i, ''), env);
