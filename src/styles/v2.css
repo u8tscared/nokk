@@ -343,3 +343,22 @@ button.link.center { align-self: center; }
 .sync-orb::after { content: ''; position: absolute; inset: 30px; border-radius: 50%; background: var(--accent); }
 @keyframes orb { 0% { transform: scale(0.35); opacity: 0.9; } 100% { transform: scale(1); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sync-orb i { animation: none; opacity: 0.4; } }
+
+/* Créateur de secteur : recherche d'adresse et repères */
+.creator-head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.creator-head .creator-hint { padding: 9px 12px; font-size: 13px; }
+.addr-search { position: relative; }
+.addr-field { display: flex; align-items: center; gap: 8px; background: var(--paper); border-radius: 18px; padding: 0 6px 0 14px; box-shadow: var(--sh-float); min-height: 48px; }
+.addr-field .ico { flex: none; color: var(--muted); }
+.addr-field input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 16px; color: var(--ink); padding: 12px 0; outline: none; }
+.addr-field input::-webkit-search-cancel-button { display: none; }
+.addr-clear { flex: none; width: 36px; height: 36px; border: 0; border-radius: 12px; background: none; color: var(--muted); display: grid; place-items: center; }
+.addr-results { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; background: var(--paper); border-radius: 18px; box-shadow: var(--sh-lg); max-height: 50vh; overflow-y: auto; }
+.addr-results button { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 0; background: none; color: var(--ink); padding: 10px; border-radius: 12px; font: inherit; }
+.addr-results button:active, .addr-results button:hover { background: var(--tint, rgba(0,0,0,.05)); }
+.addr-results .ico { flex: none; color: var(--accent); }
+.addr-results b { display: block; font-weight: 650; font-size: 15px; }
+.addr-results small { display: block; color: var(--muted); font-size: 13px; }
+.addr-empty { padding: 12px; color: var(--muted); font-size: 14px; }
+.addr-pin { width: 26px; height: 34px; }
+.addr-pin i { display: block; width: 22px; height: 22px; background: var(--accent-2); border: 3px solid var(--paper); border-radius: 50% 50% 50% 0; transform: translate(2px, 2px) rotate(-45deg); box-shadow: var(--sh); }

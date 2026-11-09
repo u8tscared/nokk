@@ -19,7 +19,7 @@ function wfsUrl(layer, b, { props, start = 0 } = {}) {
   return WFS + '?' + q;
 }
 
-async function getAll(layer, b, opts, signal) {
+export async function getAll(layer, b, opts, signal) {
   const out = [];
   for (let start = 0; start < 50000; start += PAGE) {
     const r = await fetch(wfsUrl(layer, b, { ...opts, start }), { signal });

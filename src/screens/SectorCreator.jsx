@@ -13,6 +13,7 @@ import { openSheet, closeAllSheets, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { startGeo } from '../lib/geoloc.js';
+import { searchAddress, houseNumbers } from '../lib/adresse.js';
 
 const fc = (features) => ({ type: 'FeatureCollection', features });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -58,6 +59,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   const [name, setName] = useState(`Secteur ${n}`);
   const [crew, setCrew] = useState(data.value.crew?.length ? data.value.crew : [data.value.meId].filter(Boolean));
   const abort = useRef();
+  const pin = useRef(null);
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
@@ -89,6 +91,8 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       map.addLayer({ id: 'fdoors', type: 'circle', source: 'fdoors', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.6, 17, 4.5], 'circle-color': ['case', ['>', ['get', 'flats'], 1], t.info || t.accent, t.paper], 'circle-stroke-color': t.ink, 'circle-stroke-width': 1.2 } });
       map.addLayer({ id: 'froute', type: 'line', source: 'froute', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.ink, 'line-width': 2.5, 'line-dasharray': [0.1, 1.8] } });
       map.addLayer({ id: 'fnew', type: 'circle', source: 'fnew', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 13], 'circle-color': t.coral, 'circle-opacity': 0.35, 'circle-stroke-color': t.coral, 'circle-stroke-width': 2, 'circle-stroke-opacity': 0.8 } });
+      map.addSource('housenums', { type: 'geojson', data: fc([]) });
+      map.addLayer({ id: 'housenums', type: 'symbol', source: 'housenums', minzoom: 15.8, layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 16, 10, 18, 13], 'text-padding': 1, 'text-allow-overlap': false }, paint: { 'text-color': t.ink, 'text-halo-color': t.paper, 'text-halo-width': 1.6, 'text-opacity': 0.8 } });
       map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': t.paper, 'circle-stroke-color': t.coral, 'circle-stroke-width': 3 } });
     });
     map.on('click', (e) => {
@@ -97,8 +101,21 @@ export function SectorCreator({ close, photo: initialPhoto }) {
       setPoints((pts) => [...pts, [e.lngLat.lng, e.lngLat.lat]]);
     });
     map.on('move', () => placeRadar());
+    // Numéros de rue pour se repérer, dès qu'on est assez près.
+    const hn = houseNumbers({ onData: (d) => map.getSource('housenums')?.setData(d) });
+    let hnT = 0;
+    const loadNums = () => {
+      clearTimeout(hnT);
+      hnT = setTimeout(() => {
+        if (map.getZoom() < 15.8 || stageRef.current !== 'draw') return;
+        const b = map.getBounds();
+        hn.update([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+      }, 350);
+    };
+    map.on('moveend', loadNums);
+    map.once('load', loadNums);
     if (!pos) startGeo({ ask: false }).then(() => { const p = position.value?.p; if (p && stageRef.current === 'draw') map.easeTo({ center: p, zoom: 16.2 }); }).catch(() => {});
-    return () => { abort.current?.abort(); map.remove(); mapRef.current = null; window.__nokkCreatorMap = null; };
+    return () => { clearTimeout(hnT); hn.stop(); pin.current?.remove(); abort.current?.abort(); map.remove(); mapRef.current = null; window.__nokkCreatorMap = null; };
   }, []);
 
   // Tracé affiché
@@ -266,16 +283,28 @@ export function SectorCreator({ close, photo: initialPhoto }) {
 
       <div class="creator-top">
         {stage === 'draw' && (
-          <div class="creator-hint">
-            <Icon name="draw" />
-            <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Encore des coins, ou <b>Terminer</b></>}</span>
+          <div class="creator-head">
+            <AddressSearch map={mapRef} onPick={(r) => {
+              const map = mapRef.current;
+              if (!map) return;
+              feel('tick');
+              pin.current?.remove();
+              const el = document.createElement('div');
+              el.className = 'addr-pin'; el.appendChild(document.createElement('i'));
+              pin.current = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(r.p).addTo(map);
+              map.flyTo({ center: r.p, zoom: r.kind === 'municipality' ? 14.5 : r.kind === 'street' ? 16.5 : 17.6, duration: 900 });
+            }} />
+            <div class="creator-hint">
+              <Icon name="draw" />
+              <span>{pts < 3 ? <>Touchez la carte pour poser les coins de votre zone · <b>{pts}/3</b></> : <>Encore des coins, ou <b>Terminer</b></>}</span>
+            </div>
           </div>
         )}
         {stage !== 'draw' && <div class="grow" />}
         {photo && <IconButton icon="photo" label="Voir la photo du plan" onClick={() => setShowPhoto(!showPhoto)} />}
         <IconButton icon="x" label="Fermer" onClick={close} />
       </div>
-      {photo && showPhoto && <img class="plan-photo" src={photo} alt="Photo du plan reçu" onClick={() => setShowPhoto(false)} style={{ top: '70px' }} />}
+      {photo && showPhoto && <img class="plan-photo" src={photo} alt="Photo du plan reçu" onClick={() => setShowPhoto(false)} style={{ top: '128px' }} />}
 
       {stage === 'draw' && (
         <div class="creator-bottom">
@@ -371,6 +400,55 @@ export function SectorCreator({ close, photo: initialPhoto }) {
             </>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Recherche d'une adresse, d'une rue ou d'une commune pour aller tracer au bon endroit.
+function AddressSearch({ map, onPick }) {
+  const [q, setQ] = useState('');
+  const [res, setRes] = useState([]);
+  const [state, setState] = useState('idle'); // idle | busy | none | error
+  const ctrl = useRef(null);
+  const t = useRef(0);
+  useEffect(() => () => { clearTimeout(t.current); ctrl.current?.abort(); }, []);
+  function run(v) {
+    clearTimeout(t.current);
+    ctrl.current?.abort();
+    if (v.trim().length < 3) { setRes([]); setState('idle'); return; }
+    t.current = setTimeout(async () => {
+      const c = (ctrl.current = new AbortController());
+      setState('busy');
+      try {
+        const m = map.current;
+        const near = m && m.getZoom() > 9 ? m.getCenter().toArray() : position.value?.p;
+        const r = await searchAddress(v, { near, signal: c.signal });
+        if (c.signal.aborted) return;
+        setRes(r); setState(r.length ? 'idle' : 'none');
+      } catch (e) { if (e?.name !== 'AbortError') { setRes([]); setState('error'); } }
+    }, 280);
+  }
+  const pick = (r) => { setRes([]); setQ(r.label + (r.sub ? ', ' + r.sub : '')); document.activeElement?.blur?.(); onPick(r); };
+  return (
+    <div class="addr-search">
+      <form class="addr-field" role="search" onSubmit={(e) => { e.preventDefault(); if (res[0]) pick(res[0]); }}>
+        <Icon name="search" size={20} />
+        <input {...inputKinds.search} data-testid="addr-search" placeholder="Rechercher une adresse, une rue…" aria-label="Rechercher une adresse" value={q} autoComplete="off"
+          onInput={(e) => { setQ(e.currentTarget.value); run(e.currentTarget.value); }} />
+        {q && <button type="button" class="addr-clear" aria-label="Effacer" onClick={() => { setQ(''); setRes([]); setState('idle'); }}><Icon name="x" size={16} /></button>}
+      </form>
+      {(res.length > 0 || state === 'none' || state === 'error') && (
+        <ul class="addr-results" role="listbox" data-testid="addr-results">
+          {res.map((r, i) => (
+            <li key={i}><button type="button" role="option" onClick={() => pick(r)}>
+              <Icon name={r.kind === 'municipality' ? 'map' : r.kind === 'street' ? 'route' : 'door'} size={18} />
+              <span><b>{r.label}</b>{r.sub && <small>{r.sub}</small>}</span>
+            </button></li>
+          ))}
+          {state === 'none' && <li class="addr-empty">Aucune adresse trouvée</li>}
+          {state === 'error' && <li class="addr-empty">Recherche impossible pour l'instant (réseau ?)</li>}
+        </ul>
       )}
     </div>
   );
