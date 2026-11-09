@@ -18,10 +18,24 @@ installFreeze();
 installOnline();
 resumeGeoIfGranted();
 
-// Vraie hauteur de l'écran dans l'app installée (sinon une bande vide apparaît sous la barre d'onglets).
-const setH = () => document.documentElement.style.setProperty('--app-h', (window.visualViewport?.height && !document.documentElement.classList.contains('kb-open') ? window.innerHeight : window.innerHeight) + 'px');
-setH();
-window.addEventListener('resize', setH);
+// iOS 26, app installée : la fenêtre s'arrête parfois ~60 px avant le bas de l'écran (bande vide sous
+// la barre d'onglets). On mesure l'écart avec la vraie hauteur de l'écran et le cadre de l'app le comble.
+const fixGap = () => {
+  const root = document.documentElement;
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let g = 0;
+  if (standalone && /iPhone|iPod/.test(navigator.userAgent) && !root.classList.contains('kb-open')) {
+    const portrait = window.innerHeight >= window.innerWidth;
+    const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    g = Math.round(full - window.innerHeight);
+    if (g < 0 || g > 140) g = 0;
+  }
+  root.style.setProperty('--vgap', g + 'px');
+};
+fixGap();
+window.addEventListener('resize', fixGap);
+window.addEventListener('orientationchange', () => setTimeout(fixGap, 300));
+document.addEventListener('visibilitychange', () => setTimeout(fixGap, 100));
 
 render(<App />, document.getElementById('app'));
 

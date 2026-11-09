@@ -2,8 +2,9 @@
 .map-screen { position: absolute; inset: 0; }
 .map-box, .map-box.maplibregl-map { position: absolute; inset: 0; background: var(--map-bg); }
 .maplibregl-ctrl-attrib { font-size: 10px; background: var(--glass) !important; }
-.maplibregl-ctrl-bottom-left { bottom: calc(var(--tabbar-h) + var(--safe-b) + 200px); }
-@media (min-width: 700px) { .maplibregl-ctrl-bottom-left { bottom: 8px; } }
+.map-box .maplibregl-ctrl-top-left { top: calc(var(--safe-t) + 62px); left: max(4px, var(--safe-l)); }
+.map-box .maplibregl-ctrl-attrib.maplibregl-compact { margin: 6px; }
+@media (min-width: 960px) { .map-box .maplibregl-ctrl-top-left { top: auto; bottom: 8px; } }
 
 .map-top {
   position: absolute; z-index: 5; top: calc(var(--safe-t) + 10px); left: max(12px, var(--safe-l)); right: max(12px, var(--safe-r));
