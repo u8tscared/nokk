@@ -681,17 +681,6 @@ details[open] p { animation: fadeup .5s var(--ease); }
 @keyframes shut { 0%, 4% { transform: scale(1); } 7% { transform: scale(.82); } 11%, 100% { transform: scale(1); } }
 .hs-photo.on .cam-bottom small { animation: dots 6s var(--ease) infinite; }
 
-/* Barre de faits (fixe, sous le hero) */
-.facts { position: relative; z-index: 1; list-style: none; margin: 8px 0 0; padding: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; background: var(--paper); border-radius: 26px; box-shadow: var(--sh-float); }
-@media (min-width: 900px) { .facts { grid-template-columns: repeat(4, 1fr); padding: 14px; } }
-.facts li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 16px; transition: background .25s; line-height: 1.2; }
-.facts li:hover { background: var(--well); }
-.facts b { display: block; font-family: var(--d); font-size: 16px; letter-spacing: -.02em; }
-.facts small { color: var(--muted); font-weight: 600; font-size: 13px; }
-.fact-ico { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--tint); color: var(--accent-ink); }
-.fact-ico.red { background: var(--accent-2-tint); color: var(--accent-2-ink); }
-.fact-ico svg { width: 22px; height: 22px; }
-@media (max-width: 520px) { .facts { grid-template-columns: 1fr; } }
 
 /* Avant / avec Nokk : glissière */
 .compare { position: relative; display: grid; margin-top: 40px; border-radius: 32px; overflow: hidden; box-shadow: var(--sh-lg); user-select: none; -webkit-user-select: none; touch-action: pan-y; }
@@ -731,3 +720,39 @@ details[open] p { animation: fadeup .5s var(--ease); }
 .compare { cursor: ew-resize; }
 .compare:has(.cmp-range:focus-visible) .cmp-handle span { outline: 3px solid var(--ink); outline-offset: 3px; }
 .hero > .wrap { position: relative; z-index: 1; padding-bottom: 56px; }
+
+/* Bande « tournée » : 4 arrêts sur une rue, sous le hero */
+.tour { position: relative; z-index: 1; margin-top: 12px; background: #12262a; color: #e7efed; border-radius: 36px; padding: clamp(28px, 4vw, 48px) clamp(20px, 4vw, 56px); overflow: hidden; box-shadow: 0 30px 70px -30px rgba(18, 38, 42, .6); }
+.tour::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 99px, rgba(255,255,255,.035) 99px 101px), repeating-linear-gradient(0deg, transparent 0 99px, rgba(255,255,255,.035) 99px 101px); pointer-events: none; }
+.tour-line { position: absolute; left: clamp(20px, 4vw, 56px); right: clamp(20px, 4vw, 56px); top: clamp(28px, 4vw, 48px); width: auto; height: 120px; overflow: visible; }
+.tour-road { fill: none; stroke: #24383b; stroke-width: 14; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.tour-path { fill: none; stroke: #4fa391; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; vector-effect: non-scaling-stroke; }
+.tour.in .tour-path { transition: stroke-dashoffset 2.6s var(--ease); stroke-dashoffset: 0; }
+.tour-stops { position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+.tour-stops li { padding-right: 16px; }
+.tour-stops li { display: grid; justify-items: start; align-content: start; padding-top: 0; opacity: 0; transform: translateY(16px); transition: opacity .7s var(--ease), transform .7s var(--spring); transition-delay: calc(.35s + var(--i) * .55s); }
+.tour.in .tour-stops li { opacity: 1; transform: none; }
+.stop { display: block; width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 6px #12262a, 0 0 0 8px rgba(255,255,255,.12); margin: 47px 0 42px; position: relative; }
+.tour-stops li:nth-child(2) .stop { margin-top: 7px; margin-bottom: 82px; }
+.tour-stops li:nth-child(n) .stop { margin-left: -13px; }
+.tour-stops li:nth-child(3) .stop { margin-top: 87px; margin-bottom: 2px; }
+.tour-stops li:nth-child(4) .stop { margin-top: 7px; margin-bottom: 82px; }
+.stop::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid var(--c); opacity: 0; }
+.tour.in .stop::after { animation: stop-ring 2.4s ease-out infinite; animation-delay: calc(.6s + var(--i) * .55s); }
+@keyframes stop-ring { 0% { transform: scale(.6); opacity: .9; } 70%, 100% { transform: scale(1.9); opacity: 0; } }
+.tour-stops b { font-family: var(--d); font-weight: 900; font-size: clamp(44px, 5.6vw, 76px); letter-spacing: -.055em; line-height: .95; color: #fff; }
+.tour-stops li:nth-child(3) b { color: #f2948e; }
+.tour-stops li > span { margin-top: 10px; color: #93a6a4; font-weight: 600; font-size: 15px; line-height: 1.35; }
+.tour-stops li:nth-child(3) { padding-top: 0; }
+/* positions des arrêts : alignées sur la courbe (gauche de chaque colonne) */
+@media (max-width: 760px) {
+  .tour-line { display: none; }
+  .tour-stops { grid-template-columns: 1fr; gap: 0; padding-left: 40px; }
+  .tour-stops::before { content: ''; position: absolute; left: 11px; top: 14px; bottom: 30px; width: 5px; border-radius: 5px; background: #24383b; }
+  .tour-stops::after { content: ''; position: absolute; left: 11px; top: 14px; bottom: 30px; width: 5px; border-radius: 5px; background: #4fa391; transform-origin: top; transform: scaleY(0); transition: transform 2.4s var(--ease); }
+  .tour.in .tour-stops::after { transform: none; }
+  .tour-stops li, .tour-stops li:nth-child(n) { position: relative; padding: 4px 0 26px; }
+  .stop, .tour-stops li:nth-child(n) .stop { position: absolute; left: -40px; top: 10px; margin: 0; }
+}
+.tour-stops .unit { font-style: normal; font-size: .5em; letter-spacing: -.03em; }
+.stop { z-index: 1; }

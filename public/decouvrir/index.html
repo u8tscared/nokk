@@ -88,11 +88,6 @@
             </a>
             <a class="btn soft lg" data-app href="../">Créer ma caserne</a>
           </div>
-          <ul class="hero-proof reveal" style="--d:.74s">
-            <li><b>2 gestes</b> par porte</li>
-            <li><b>0 €</b> pour les pompiers</li>
-            <li><b>100 %</b> hors ligne</li>
-          </ul>
         </div>
 
         <div class="hero-visual" aria-label="Aperçu de l'app Nokk pendant une tournée" role="img">
@@ -178,12 +173,18 @@
       </div>
 
       <div class="wrap">
-        <ul class="facts">
-          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6.5 12.5a9 9 0 0 1 11 0M10 16a4 4 0 0 1 4 0M12 19.5h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span><b>Hors ligne</b><small>tout est gardé</small></span></li>
-          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="9.5" r="2.5" fill="currentColor"/></svg></span><span><b>Partout en France</b><small>rues et numéros officiels</small></span></li>
-          <li><span class="fact-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span><b>iPhone et Android</b><small>sans passer par un store</small></span></li>
-          <li><span class="fact-ico red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>0 € pour les casernes</b><small>pendant la phase de test</small></span></li>
-        </ul>
+        <div class="tour" id="tour">
+          <svg class="tour-line" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
+            <path class="tour-road" d="M0 60 C 120 60, 140 20, 250 20 S 380 100, 500 100 S 640 20, 750 20 S 880 60, 1000 60"/>
+            <path class="tour-path" d="M0 60 C 120 60, 140 20, 250 20 S 380 100, 500 100 S 640 20, 750 20 S 880 60, 1000 60"/>
+          </svg>
+          <ol class="tour-stops">
+            <li style="--i:0"><i class="stop" style="--c:var(--st-done)"></i><b><span class="count" data-to="2">2</span></b><span>gestes par porte,<br/>le pouce suffit</span></li>
+            <li style="--i:1"><i class="stop" style="--c:var(--st-repasser)"></i><b><span class="count" data-to="1">1</span> <em class="unit">photo</em></b><span>pour importer<br/>un ancien plan</span></li>
+            <li style="--i:2"><i class="stop" style="--c:var(--accent-2)"></i><b><span class="count" data-to="0">0</span> €</b><span>pour la caserne,<br/>tout est inclus</span></li>
+            <li style="--i:3"><i class="stop" style="--c:#84cbbb"></i><b><span class="count" data-to="100">100</span> %</b><span>hors ligne, même<br/>dans la cage d'escalier</span></li>
+          </ol>
+        </div>
       </div>
     </section>
 
