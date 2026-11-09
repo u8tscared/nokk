@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Figtree:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Figtree:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="landing.css" />
 </head>
 <body>
@@ -88,11 +88,6 @@
             </a>
             <a class="btn soft lg" data-app href="../">Créer ma caserne</a>
           </div>
-          <ul class="hero-proof reveal" style="--d:.74s">
-            <li><b>2 gestes</b> par porte</li>
-            <li><b>0 €</b> pour les pompiers</li>
-            <li><b>100 %</b> hors ligne</li>
-          </ul>
         </div>
 
         <div class="hero-visual" aria-label="Aperçu de l'app Nokk pendant une tournée" role="img">
@@ -177,12 +172,6 @@
         </div>
       </div>
 
-      <div class="marquee" aria-hidden="true">
-        <div class="marquee-track">
-          <span>Secteurs depuis vos anciens plans</span><i></i><span>Parcours optimisé</span><i></i><span>Porte à porte en 2 gestes</span><i></i><span>Caisse sans écart</span><i></i><span>Espace caserne</span><i></i><span>QR « Repassez plus tard »</span><i></i><span>Hors ligne</span><i></i><span>Historique d'une année sur l'autre</span><i></i>
-          <span>Secteurs depuis vos anciens plans</span><i></i><span>Parcours optimisé</span><i></i><span>Porte à porte en 2 gestes</span><i></i><span>Caisse sans écart</span><i></i><span>Espace caserne</span><i></i><span>QR « Repassez plus tard »</span><i></i><span>Hors ligne</span><i></i><span>Historique d'une année sur l'autre</span><i></i>
-        </div>
-      </div>
     </section>
 
     <!-- ============ PROBLÈME → SOLUTION ============ -->
@@ -190,26 +179,29 @@
       <div class="wrap">
         <p class="kicker reveal">Avant / avec Nokk</p>
         <h2 class="h2 reveal">Fini le carnet à spirale, la photocopie du plan et le recomptage à minuit.</h2>
-        <div class="ba-grid">
-          <div class="ba before reveal">
-            <h3>Avant</h3>
-            <ul>
-              <li>Des plans papier photocopiés, surlignés, perdus.</li>
-              <li>« On est déjà passés rue Pasteur ? » Personne ne sait.</li>
-              <li>Les absents notés sur un coin de feuille, jamais revus.</li>
-              <li>Le soir, recompter les billets et chercher l'écart.</li>
+        <p class="lead reveal">Faites glisser pour voir la différence.</p>
+        <div class="compare reveal" id="compare" style="--x:50%">
+          <div class="cmp-layer cmp-after" aria-label="Avec Nokk">
+            <span class="cmp-tag after-tag">Avec Nokk</span>
+            <ul class="cmp-rows">
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M4 7h4l2-3h4l2 3h4v12H4z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span><b>Secteur 4 importé en photo</b><small>214 portes · 38 rues · imprimable en PDF</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Rue Pasteur · faite</b><small>par Thomas et Inès, mardi à 19 h 12</small></span><i class="street"></i></li>
+              <li><span class="ci warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span><b>3 absents à revoir</b><small>ajoutés à la tournée de mardi, 18 h</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span><span><b>Caisse : 1 250 €</b><small>écart 0 € · remise signée au trésorier</small></span><em class="zero">0 €</em></li>
             </ul>
           </div>
-          <div class="ba-arrow reveal" aria-hidden="true"><svg viewBox="0 0 60 24"><path d="M2 12h52M44 3l10 9-10 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div class="ba after reveal">
-            <h3>Avec Nokk</h3>
-            <ul>
-              <li>Vos anciens plans importés en photo, en secteurs propres.</li>
-              <li>Les rues faites se colorent. On ne repasse jamais deux fois.</li>
-              <li>Les absents reviennent tout seuls dans la tournée de rattrapage.</li>
-              <li>La caisse se calcule pendant la tournée. Écart : 0 €.</li>
+          <div class="cmp-layer cmp-before" aria-label="Avant">
+            <span class="cmp-tag before-tag">Avant</span>
+            <span class="coffee" aria-hidden="true"></span>
+            <ul class="cmp-rows hand">
+              <li><span class="ci">✗</span><span><b>Plan photocopié n°3…</b><small>et le n°4 il est où ??</small></span></li>
+              <li><span class="ci">✗</span><span><b>R. Pasteur → <s>fait</s> ?</b><small>demander à Thomas</small></span></li>
+              <li><span class="ci">✗</span><span><b>Absents : 12, 14, 18 bis…</b><small>repasser un jour (?)</small></span></li>
+              <li><span class="ci">✗</span><span><b>Caisse : 1 235 € ???</b><small>il manque 15 €, on recompte…</small></span></li>
             </ul>
           </div>
+          <div class="cmp-handle" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <input class="cmp-range" type="range" min="0" max="100" value="50" aria-label="Comparer avant et avec Nokk" />
         </div>
       </div>
     </section>
@@ -225,9 +217,9 @@
           <ol class="steps">
             <li class="step" data-step="0">
               <span class="step-n">01</span>
-              <h3>Importez vos anciens plans</h3>
-              <p>Prenez en photo la fiche papier de chaque secteur. Nokk repère le tracé au feutre, le pose sur la vraie carte et compte les portes et les rues. Vous ajustez du doigt si besoin. Plusieurs plans d'un coup, c'est possible.</p>
-              <ul class="ticks"><li>Photo, liste d'adresses ou tracé à la main</li><li>Partout en France, rues et numéros officiels</li><li>Impression PDF du secteur avec la liste des rues</li></ul>
+              <h3>Créez vos secteurs : en photo ou au doigt</h3>
+              <p>Deux façons, au choix. Prenez en photo la fiche papier de chaque secteur : Nokk repère le tracé au feutre et le pose sur la vraie carte. Ou tracez le contour vous-même, du doigt, directement sur la carte. Dans les deux cas, Nokk trouve toutes les rues et les portes à l'intérieur.</p>
+              <ul class="ticks"><li>Photo du plan, tracé au doigt ou liste d'adresses</li><li>Partout en France, rues et numéros officiels</li><li>Impression PDF du secteur avec la liste des rues</li></ul>
               <div class="step-phone"></div>
             </li>
             <li class="step" data-step="1">
@@ -242,6 +234,7 @@
               <h3>Suivez le parcours, porte par porte</h3>
               <p>Le gros bouton rouge ouvre la porte suivante. Absent, refus, déjà pris : un geste. Un don : le montant, le moyen, valider. La fiche passe seule à la porte d'après, sur le meilleur trajet à pied.</p>
               <ul class="ticks"><li>Historique de la porte : « 2025 : 20 €, préfère le soir »</li><li>Notes rapides : chien, digicode, ne pas sonner</li></ul>
+              <div class="hero-ctas"><a class="btn soft" data-app="demo-pompier" href="../#demo-pompier">Essayer la démo pompier</a></div>
               <div class="step-phone"></div>
             </li>
             <li class="step" data-step="3">
@@ -388,6 +381,27 @@
             <p>Vos anciennes fiches deviennent des secteurs en une photo. La transition se fait sans rien perdre.</p>
           </article>
 
+          <article class="card c-draw reveal">
+            <div class="card-art art-draw" aria-hidden="true">
+              <svg viewBox="0 0 200 120">
+                <rect width="200" height="120" fill="var(--map-bg)"/>
+                <g stroke="var(--map-road)" stroke-width="7" fill="none" stroke-linecap="round"><path d="M-5 30 H205 M-5 88 H205 M52 -5 V125 M140 -5 V125"/></g>
+                <path id="draw-poly" d="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z" fill="var(--accent)" fill-opacity="0" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+                  <animate attributeName="stroke-dashoffset" values="100;0;0;100" keyTimes="0;.55;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                  <animate attributeName="fill-opacity" values="0;0;.18;.18;0" keyTimes="0;.55;.62;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                </path>
+                <g>
+                  <circle r="9" fill="var(--accent-2)" opacity=".25"/>
+                  <circle r="5" fill="var(--accent-2)" stroke="#fff" stroke-width="2"/>
+                  <animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;1;0" keyTimes="0;.55;.9;1" calcMode="linear" path="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z"/>
+                  <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.6;.95;1" dur="4.5s" repeatCount="indefinite"/>
+                </g>
+              </svg>
+            </div>
+            <h3>Tracé au doigt</h3>
+            <p>Pas de fiche papier ? Dessinez le contour du secteur sur la carte : les rues et les portes se remplissent toutes seules.</p>
+          </article>
+
           <article class="card c-route reveal">
             <div class="card-art art-route" aria-hidden="true">
               <svg viewBox="0 0 200 110"><g stroke="var(--rim-2)" stroke-width="2" fill="none"><path d="M10 30 H190 M10 80 H190"/></g><path class="zig" d="M14 30 L40 80 L66 30 L92 80 L118 30 L144 80 L170 30 L186 80" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -479,6 +493,7 @@
             <li class="reveal"><b>Suivre en direct</b><span>Qui est où, combien de portes, combien d'euros. Même quand les téléphones reviennent du hors ligne.</span></li>
             <li class="reveal"><b>Comparer d'une année sur l'autre</b><span>Les secteurs qui marchent, ceux qui s'essoufflent, l'€ par porte. Et les exports pour l'amicale.</span></li>
           </ul>
+          <div class="hero-ctas reveal"><a class="btn primary lg" data-app="demo-caserne" href="../#demo-caserne">Essayer la démo chef de caserne</a></div>
         </div>
 
         <div class="dash-wrap reveal" aria-label="Aperçu du tableau de bord de la caserne" role="img">
@@ -740,7 +755,6 @@
   <footer class="foot">
     <div class="wrap foot-inner">
       <a class="brand" href="#top"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg><span class="wordmark sm">nokk</span></a>
-      <p>Fait avec des sapeurs-pompiers volontaires, pour leurs tournées. Cartes © OpenStreetMap.</p>
       <nav><a data-app href="../">Ouvrir l'app</a><a href="#partager">Partager</a><a href="#faq">Questions</a></nav>
     </div>
   </footer>
