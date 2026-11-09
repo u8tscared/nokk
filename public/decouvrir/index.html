@@ -217,9 +217,9 @@
           <ol class="steps">
             <li class="step" data-step="0">
               <span class="step-n">01</span>
-              <h3>Importez vos anciens plans</h3>
-              <p>Prenez en photo la fiche papier de chaque secteur. Nokk repère le tracé au feutre, le pose sur la vraie carte et compte les portes et les rues. Vous ajustez du doigt si besoin. Plusieurs plans d'un coup, c'est possible.</p>
-              <ul class="ticks"><li>Photo, liste d'adresses ou tracé à la main</li><li>Partout en France, rues et numéros officiels</li><li>Impression PDF du secteur avec la liste des rues</li></ul>
+              <h3>Créez vos secteurs : en photo ou au doigt</h3>
+              <p>Deux façons, au choix. Prenez en photo la fiche papier de chaque secteur : Nokk repère le tracé au feutre et le pose sur la vraie carte. Ou tracez le contour vous-même, du doigt, directement sur la carte. Dans les deux cas, Nokk trouve toutes les rues et les portes à l'intérieur.</p>
+              <ul class="ticks"><li>Photo du plan, tracé au doigt ou liste d'adresses</li><li>Partout en France, rues et numéros officiels</li><li>Impression PDF du secteur avec la liste des rues</li></ul>
               <div class="step-phone"></div>
             </li>
             <li class="step" data-step="1">
@@ -379,6 +379,27 @@
             <div class="card-art art-scan" aria-hidden="true"><div class="scan-paper"><span class="scan-mark"></span><span class="scan-line"></span></div></div>
             <h3>Tracé depuis une photo</h3>
             <p>Vos anciennes fiches deviennent des secteurs en une photo. La transition se fait sans rien perdre.</p>
+          </article>
+
+          <article class="card c-draw reveal">
+            <div class="card-art art-draw" aria-hidden="true">
+              <svg viewBox="0 0 200 120">
+                <rect width="200" height="120" fill="var(--map-bg)"/>
+                <g stroke="var(--map-road)" stroke-width="7" fill="none" stroke-linecap="round"><path d="M-5 30 H205 M-5 88 H205 M52 -5 V125 M140 -5 V125"/></g>
+                <path id="draw-poly" d="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z" fill="var(--accent)" fill-opacity="0" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+                  <animate attributeName="stroke-dashoffset" values="100;0;0;100" keyTimes="0;.55;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                  <animate attributeName="fill-opacity" values="0;0;.18;.18;0" keyTimes="0;.55;.62;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                </path>
+                <g>
+                  <circle r="9" fill="var(--accent-2)" opacity=".25"/>
+                  <circle r="5" fill="var(--accent-2)" stroke="#fff" stroke-width="2"/>
+                  <animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;1;0" keyTimes="0;.55;.9;1" calcMode="linear" path="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z"/>
+                  <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.6;.95;1" dur="4.5s" repeatCount="indefinite"/>
+                </g>
+              </svg>
+            </div>
+            <h3>Tracé au doigt</h3>
+            <p>Pas de fiche papier ? Dessinez le contour du secteur sur la carte : les rues et les portes se remplissent toutes seules.</p>
           </article>
 
           <article class="card c-route reveal">

@@ -720,3 +720,4 @@ details[open] p { animation: fadeup .5s var(--ease); }
 .compare { cursor: ew-resize; }
 .compare:has(.cmp-range:focus-visible) .cmp-handle span { outline: 3px solid var(--ink); outline-offset: 3px; }
 
+.art-draw svg { width: 100%; height: 100%; }
