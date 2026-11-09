@@ -3,7 +3,7 @@ import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Seg, Stepper, NumPad, toast, confetti, Bump, Field, shake } from '../ui/ui.jsx';
 import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState } from '../lib/store.js';
 import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit } from '../lib/model.js';
-import { doorAfter, stats, whereNext } from '../lib/tour.js';
+import { doorAfter, stats, whereNext, startGuide } from '../lib/tour.js';
 import { formatDistance } from '../lib/geo.js';
 import { flyTo } from '../ui/MapView.jsx';
 import { feel } from '../lib/feedback.js';
@@ -134,7 +134,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
 
   function record(result) {
     const u = unit.trim();
-    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, note: note.trim() || undefined });
+    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, name: name.trim() || undefined, note: note.trim() || undefined });
     feel(result === 'refus' ? 'err' : 'ok');
     stamp(result === 'absent' ? 'warn' : 'muted');
     const label = result === 'absent' ? 'Absent · on repassera' : result === 'refus' ? 'Refus noté · on ne repassera pas' : 'Déjà pris noté';
@@ -228,6 +228,10 @@ export function DoorSheet({ doorId: initialId, close, start }) {
       {step === 'ask' && (
         <div class={'stage anim-' + motion} key={'ask' + doorId + units.length}>
           {!isBuilding && list.length > 0 && <History list={list} st={st} />}
+          <div class="ask-name">
+            <label for="aname"><Icon name="user" size={18} /></label>
+            <input id="aname" class="input" placeholder={isBuilding ? 'Nom sur l\'interphone (facultatif)' : 'Nom sur la boîte (facultatif)'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} enterKeyHint="done" data-testid="ask-name" />
+          </div>
           <div class="ask-label">{isBuilding ? <>Logement <b>{unit || 'suivant'}</b> : ils donnent ?</> : 'Ils donnent ?'}</div>
           <button class="yes-btn" data-autofocus onClick={() => { feel('tap'); go('give'); }} data-testid="yes">
             <span class="yes-ico"><Icon name="check" /></span>
@@ -245,8 +249,9 @@ export function DoorSheet({ doorId: initialId, close, start }) {
               <button class="link-btn" onClick={closeBuilding} data-testid="close-building"><Icon name="flag" size={18} /> Immeuble fini</button>
             </div>
           ) : (
-            <div class="hrow between door-tools">
-              <button class="link-btn" onClick={() => { feel('tap'); setLeaving(null); go('pick'); }} data-testid="pick-other"><Icon name="swap" size={18} /> Une autre porte</button>
+            <div class="door-tools3">
+              <button class="link-btn" onClick={() => { feel('tap'); updateDoor(door.id, { flats: 2 }); setUnit(String(list.filter((v) => !v.closed).length + 1)); toast('Deux foyers ici : saisissez-les l\'un après l\'autre'); }} data-testid="two-homes"><Icon name="plus" size={18} /> 2 sonnettes</button>
+              <button class="link-btn" onClick={() => { feel('tap'); setLeaving(null); go('pick'); }} data-testid="pick-other"><Icon name="swap" size={18} /> Autre porte</button>
               <button class="link-btn" onClick={() => editDoor(door)}><Icon name="pencil" size={18} /> Modifier</button>
             </div>
           )}
@@ -332,7 +337,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             from={door}
             leaving={leaving}
             onGo={(d) => { feel('tap'); moveTo(d); }}
-            onMap={(d) => { flyTo(d.p); close(); }}
+            onMap={(d) => { startGuide(d, door.p); close(); }}
             onBack={leaving?.done ? null : () => go('ask', 'back')}
             close={close}
           />
@@ -420,8 +425,8 @@ function NextPicker({ from, leaving, onGo, onMap, onBack, close }) {
         </button>
         {primary && (
           <div class="next-actions">
-            <Button kind="full" icon="arrowR" onClick={() => onGo(d)}>J'y suis</Button>
-            <Button kind="soft" icon="map" onClick={() => onMap(d)}>Carte</Button>
+            <Button kind="full" icon="walk" onClick={() => onMap(d)} data-testid="go-there">Y aller</Button>
+            <Button kind="soft" icon="door" onClick={() => onGo(d)}>J'y suis</Button>
           </div>
         )}
       </div>

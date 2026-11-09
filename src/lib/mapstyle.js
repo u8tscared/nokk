@@ -53,6 +53,8 @@ export function overlayLayers(t, { labels = true } = {}) {
     } },
     { id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.paper, 'line-width': W([14, 3, 18, 7]), 'line-opacity': 0.9 } },
     { id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.ink, 'line-width': W([14, 1.5, 18, 3.5]), 'line-dasharray': [0.1, 2] } },
+    { id: 'guide-casing', type: 'line', source: 'guide', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.paper, 'line-width': W([14, 6, 18, 12]) } },
+    { id: 'guide', type: 'line', source: 'guide', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.coral, 'line-width': W([14, 3.5, 18, 7]) } },
     { id: 'doors', type: 'circle', source: 'doors', minzoom: 14.5, paint: {
       'circle-radius': W([14.5, 2, 16, 3.5, 18, 7, 19.5, 11]),
       'circle-color': ['match', ['get', 'state'], 'donne', t.done, 'absent', t.repasser, 'refus', t.bad, 'deja', t.muted, 'partiel', t.repasser, t.paper],

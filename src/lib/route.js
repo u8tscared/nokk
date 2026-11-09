@@ -282,3 +282,22 @@ export function naiveMeters(doors) {
   for (let i = 0; i < doors.length - 1; i++) m += dist(doors[i].p, doors[i + 1].p) * 1.3;
   return Math.round(m);
 }
+
+// Chemin à pied d'un point à un autre sur le réseau de rues (pour « y aller »).
+const graphCache = new WeakMap();
+export function walkPath(network, from, to) {
+  const direct = { line: [from, to], meters: Math.round(dist(from, to) * 1.25) };
+  if (!network?.length) return direct;
+  let g = graphCache.get(network);
+  if (!g) { g = buildGraph(network); graphCache.set(network, g); }
+  const a = g.nearest(from), b = g.nearest(to);
+  if (a < 0 || b < 0) return direct;
+  const sp = dijkstra(g, a);
+  if (!isFinite(sp.d[b])) return direct;
+  const mid = pathTo(g, sp, b);
+  const line = [from, ...mid, to];
+  let m = 0;
+  for (let i = 0; i < line.length - 1; i++) m += dist(line[i], line[i + 1]);
+  // Si le réseau fait un détour absurde (rue manquante), on garde la ligne droite.
+  return m > direct.meters * 3 && direct.meters < 300 ? direct : { line, meters: Math.round(m) };
+}

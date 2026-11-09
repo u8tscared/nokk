@@ -271,3 +271,52 @@
 .cash-line .k { font-size: 12px; }
 @media (max-width: 380px) { .cash-line { padding: 8px 10px; } .cash-line .v { font-size: 16px; } }
 @media (min-width: 960px) { .creator-panel { top: 66px; } }
+
+/* Recherche des rues : cadre de scan, faisceau, compteur géant */
+.scanbox { position: absolute; z-index: 2; pointer-events: none; border-radius: 6px; overflow: hidden; }
+.scanbox .beam { position: absolute; left: 0; right: 0; height: 38%; top: -38%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent-2) 30%, transparent) 70%, color-mix(in srgb, var(--accent-2) 85%, transparent) 98%, #fff 100%); animation: beam 1.5s cubic-bezier(.45,.05,.55,.95) infinite; }
+.scanbox .beam::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #fff; box-shadow: 0 0 14px 4px color-mix(in srgb, var(--accent-2) 70%, transparent); }
+@keyframes beam { 0% { top: -38%; } 100% { top: 100%; } }
+.scanbox .corner { position: absolute; width: 22px; height: 22px; border: 3px solid #fff; filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); animation: cornerpulse 1.5s var(--ease) infinite; }
+.scanbox .tl { left: 0; top: 0; border-right: 0; border-bottom: 0; border-radius: 6px 0 0 0; }
+.scanbox .tr { right: 0; top: 0; border-left: 0; border-bottom: 0; border-radius: 0 6px 0 0; }
+.scanbox .bl { left: 0; bottom: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 6px; }
+.scanbox .br { right: 0; bottom: 0; border-left: 0; border-top: 0; border-radius: 0 0 6px 0; }
+@keyframes cornerpulse { 50% { transform: scale(1.12); } }
+.scanbox .hud { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 18px; border-radius: 22px; background: color-mix(in srgb, var(--ink) 82%, transparent); color: #fff; box-shadow: var(--sh-float); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: pop 0.45s var(--spring) both; white-space: nowrap; }
+.hud-n { font-family: var(--d); font-weight: 850; font-size: 46px; line-height: 1; letter-spacing: -0.03em; }
+.hud-l { font-size: 13px; font-weight: 700; opacity: 0.85; }
+.dig-title { display: flex; align-items: center; gap: 10px; }
+.dig-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-2-tint); color: var(--accent-2); animation: hop 0.9s var(--ease) infinite; }
+.dig-ico .ico { width: 22px; height: 22px; }
+@keyframes hop { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-3px, -3px) rotate(-8deg); } 75% { transform: translate(3px, -1px) rotate(8deg); } }
+.creator-panel .dig-steps { gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .scanbox .beam, .scanbox .corner, .dig-ico { animation-duration: 3s; } }
+
+/* Trajet à pied vers le prochain bâtiment */
+.guide-card { background: var(--ink); color: var(--on-ink); border-radius: var(--r); box-shadow: var(--sh-float); padding: 14px; display: flex; flex-direction: column; gap: 12px; animation: rise var(--t-mid) var(--ease) both; }
+.guide-top { display: flex; align-items: center; gap: 12px; }
+.guide-ico { width: 46px; height: 46px; border-radius: 14px; flex: none; display: grid; place-items: center; background: var(--accent-2); color: #fff; }
+.guide-ico .ico { animation: hop 1.2s var(--ease) infinite; }
+.guide-top .tiny { opacity: 0.7; font-weight: 700; }
+.guide-title { font-family: var(--d); font-weight: 780; font-size: 19px; letter-spacing: -0.02em; }
+.guide-top .small { opacity: 0.8; }
+.guide-dist { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.guide-dist b { font-family: var(--d); font-size: 24px; }
+.guide-dist small { opacity: 0.75; font-weight: 700; }
+.guide-actions { display: grid; grid-template-columns: 1fr 52px; gap: 8px; }
+.guide-actions .icon-btn { width: 52px; height: 52px; background: rgba(255,255,255,.12); color: #fff; }
+@media (min-width: 700px) { .map-bottom.guide-wrap { display: block; left: auto; right: 16px; width: 360px; bottom: 16px; z-index: 7; } }
+@media (min-width: 700px) and (max-width: 959px) { .map-bottom.guide-wrap { bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 12px); } }
+
+/* Nom dès la question */
+.ask-name { display: flex; align-items: center; gap: 0; background: var(--well); border-radius: 16px; padding-left: 12px; }
+.ask-name label { color: var(--muted); display: grid; place-items: center; }
+.ask-name .input { background: transparent; border: 0; box-shadow: none; min-height: 48px; }
+
+/* Accueil : bas aligné sur la barre d'onglets */
+.map-bottom { left: max(12px, var(--safe-l)); right: max(12px, var(--safe-r)); bottom: calc(var(--tabbar-h) + max(10px, var(--safe-b)) + 10px); }
+.scanbox .hud { left: auto; top: auto; transform: none; position: relative; }
+.hud-wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+.door-tools3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.door-tools3 .link-btn { justify-content: center; white-space: nowrap; font-size: 14px; padding-left: 4px; padding-right: 4px; }

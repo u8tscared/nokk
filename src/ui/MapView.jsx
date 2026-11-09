@@ -4,7 +4,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { buildStyle, overlayLayers, tokens } from '../lib/mapstyle.js';
 import { data, currentSector, position, demo, memberById } from '../lib/store.js';
-import { doorStates, route, nextDoor, streetFeatures } from '../lib/tour.js';
+import { doorStates, route, nextDoor, streetFeatures, guidePath } from '../lib/tour.js';
 import { bbox } from '../lib/geo.js';
 
 export const follow = signal(false);
@@ -48,7 +48,9 @@ function sourcesData() {
     ...(dr.points.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: dr.points } }] : []),
     ...dr.points.map((p) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } })),
   ] : []);
-  return { sectors, doors, streets, 'streets-label': streets, 'doors-label': doors, route: routeFc, acc, draw };
+  const gp = guidePath.value;
+  const guideFc = fc(gp ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: gp.line } }] : []);
+  return { sectors, doors, streets, 'streets-label': streets, 'doors-label': doors, route: showRoute.value && !gp ? routeFc : fc([]), acc, draw, guide: guideFc };
 }
 
 function addOverlays(map) {
@@ -76,6 +78,13 @@ export function fitSector(s, { animate = true } = {}) {
     padding: wide ? { top: 90, bottom: 60, left: innerWidth >= 960 ? 340 : 40, right: 380 } : { top: 80, bottom: 270, left: 24, right: 24 },
     duration: animate ? 900 : 0, maxZoom: 17.3,
   });
+}
+
+export function fitLine(line) {
+  if (!mapInstance || !line?.length) return;
+  const b = bbox(line);
+  const wide = innerWidth >= 700;
+  mapInstance.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: wide ? { top: 90, bottom: 80, left: innerWidth >= 960 ? 60 : 40, right: 400 } : { top: 90, bottom: 260, left: 40, right: 40 }, duration: 800, maxZoom: 18 });
 }
 
 export function flyTo(p, zoom = 17.6) {
@@ -162,7 +171,8 @@ export function MapView({ onDoor, visible = true }) {
       if (follow.value) map.easeTo({ center: pos.p, duration: 600, zoom: Math.max(map.getZoom(), 17.2), padding: innerWidth >= 700 ? { right: 360, left: 0, top: 0, bottom: 0 } : { bottom: 240, top: 0, left: 0, right: 0 } });
     }));
     disposers.push(effect(() => {
-      const n = nextDoor.value;
+      const g = guidePath.value;
+      const n = g ? g.door : nextDoor.value;
       if (!n || drawing.value) { nextMarker.remove(); return; }
       nextMarker.setLngLat(n.p).addTo(map);
     }));

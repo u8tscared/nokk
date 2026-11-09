@@ -1,9 +1,10 @@
 import { useEffect } from 'preact/hooks';
 import { Icon, Logo } from '../ui/icons.jsx';
 import { Button, IconButton, Progress, Bump, Avatar, toast, Empty } from '../ui/ui.jsx';
-import { MapView, follow, showRoute, fitSector, flyTo, drawing, mapReady } from '../ui/MapView.jsx';
+import { MapView, follow, showRoute, fitSector, flyTo, fitLine, drawing, mapReady } from '../ui/MapView.jsx';
+import { dist } from '../lib/geo.js';
 import { data, currentSector, position, geoState, setCurrentSector, memberById, doorsBySector, byDoor } from '../lib/store.js';
-import { stats, tonight, nextDoor, route, distanceToNext, repasserMode, streetSummary, doorAtPosition } from '../lib/tour.js';
+import { stats, tonight, nextDoor, route, distanceToNext, repasserMode, streetSummary, doorAtPosition, guide, guidePath, stopGuide } from '../lib/tour.js';
 import { formatEuro, totals, sectorStats } from '../lib/model.js';
 import { formatDistance } from '../lib/geo.js';
 import { startGeo } from '../lib/geoloc.js';
@@ -161,6 +162,37 @@ function TourCard() {
   );
 }
 
+// Carte « y aller » : le trajet à pied vers le prochain bâtiment.
+function GuideCard() {
+  const g = guidePath.value;
+  useEffect(() => { if (g) fitLine(g.line); }, [guide.value?.doorId]);
+  // Arrivé devant : on ouvre la porte tout seul.
+  useEffect(() => {
+    const pos = position.value;
+    if (!g || !pos || Date.now() - pos.ts > 60000) return;
+    if (dist(pos.p, g.door.p) < 18) { feel('done'); const id = g.door.id; stopGuide(); toast('Vous y êtes'); openDoor(id); }
+  }, [position.value, g?.door.id]);
+  if (!g) return null;
+  const d = g.door;
+  return (
+    <div class="guide-card" role="status" data-testid="guide">
+      <div class="guide-top">
+        <span class="guide-ico"><Icon name="walk" /></span>
+        <div class="grow">
+          <div class="tiny">{g.live ? 'Trajet à pied depuis votre position' : 'Trajet à pied'}</div>
+          <div class="guide-title">{d.num} {d.street}</div>
+          <div class="small">{d.flats > 1 ? `Immeuble · ${d.flats} logements` : 'Maison'}{d.code ? ' · code ' + d.code : ''}</div>
+        </div>
+        <div class="guide-dist"><b>{formatDistance(g.meters)}</b><small>{g.minutes} min</small></div>
+      </div>
+      <div class="guide-actions">
+        <Button kind="coral full" icon="door" onClick={() => { const id = d.id; stopGuide(); openDoor(id); }} data-testid="arrived">J'y suis</Button>
+        <IconButton icon="x" label="Arrêter le trajet" onClick={() => { stopGuide(); feel('close'); }} />
+      </div>
+    </div>
+  );
+}
+
 export function MapScreen({ visible }) {
   const sector = currentSector.value;
   const crew = (data.value.crew || []).map((id) => memberById.value.get(id)).filter(Boolean);
@@ -190,7 +222,7 @@ export function MapScreen({ visible }) {
           <div class="tour-wrap"><TourCard /></div>
           {sector ? (
             <>
-              <div class="map-bottom"><Summary /></div>
+              {guide.value ? <div class="map-bottom guide-wrap"><GuideCard /></div> : <div class="map-bottom"><Summary /></div>}
               <SidePanel />
             </>
           ) : (

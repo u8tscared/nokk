@@ -40,7 +40,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* ——— Cadre de l'app ——— */
 .app {
   position: fixed; inset: 0;
-  height: var(--app-h, var(--vvh));
   display: grid;
   grid-template-columns: 1fr;
 }

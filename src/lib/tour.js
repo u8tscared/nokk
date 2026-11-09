@@ -2,7 +2,7 @@
 import { computed, signal } from '@preact/signals';
 import { data, byDoor, currentSector, doorsBySector, position, settings } from './store.js';
 import { doorState, isDone, sectorStats, streetState, totals } from './model.js';
-import { planRoute } from './route.js';
+import { planRoute, walkPath } from './route.js';
 import { dist, nearestOnLine } from './geo.js';
 
 export const repasserMode = signal(false);
@@ -205,3 +205,22 @@ export function whereNext(doorId) {
     others: near.filter((x) => x.door.id !== onRoute?.id && x.door.id !== better?.door.id).slice(0, 4),
   };
 }
+
+// ——— Guidage : « y aller » vers un arrêt ———
+export const guide = signal(null); // { doorId } — le tracé se recalcule avec la position
+export const guidePath = computed(() => {
+  const g = guide.value;
+  if (!g) return null;
+  const door = data.value.doors.find((d) => d.id === g.doorId);
+  if (!door) return null;
+  const pos = position.value;
+  const fromP = pos && Date.now() - pos.ts < 120000 ? [+pos.p[0].toFixed(5), +pos.p[1].toFixed(5)] : g.from;
+  if (!fromP) return null;
+  const s = data.value.sectors.find((x) => x.id === door.sectorId);
+  const r = walkPath(s?.network, fromP, door.p);
+  return { door, ...r, minutes: Math.max(1, Math.round(r.meters / 75)), live: !!pos };
+});
+export function startGuide(door, fromP) {
+  guide.value = { doorId: door.id, from: fromP || null };
+}
+export function stopGuide() { guide.value = null; }
