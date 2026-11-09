@@ -33,8 +33,17 @@ async function geocode(params, signal) {
 export function alike(a, b) {
   const x = norm(a).split(' ').filter(Boolean), y = new Set(norm(b).split(' ').filter(Boolean));
   if (!x.length || !y.size) return 0;
-  const near = (w) => [...y].some((v) => v === w || (w.length > 4 && v.length > 4 && (v.startsWith(w.slice(0, -1)) || w.startsWith(v.slice(0, -1)))));
+  const near = (w) => [...y].some((v) => v === w || (w.length > 4 && v.length > 4 && (v.startsWith(w.slice(0, -1)) || w.startsWith(v.slice(0, -1)) || lev(v, w) <= 1)));
+  // Le mot le plus long (le vrai nom) doit correspondre : « Jean Corbel » n'est pas « Jean Moulin ».
+  const main = [...x].sort((a, b) => b.length - a.length)[0];
+  if (main.length > 3 && !near(main)) return 0;
   return x.filter(near).length / Math.max(x.length, y.size);
+}
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
 }
 
 const distM = (a, b) => Math.hypot((a[0] - b[0]) * 111320 * Math.cos((a[1] * Math.PI) / 180), (a[1] - b[1]) * 110540);
@@ -139,7 +148,10 @@ export async function traceFromPlan(plan, { near, signal, sector, onStep = () =>
   if (!center) throw Object.assign(new Error('no_city'), { code: 'no_city' });
   const around = { lon: String(center[0]), lat: String(center[1]) };
   const inCity = city?.citycode ? { citycode: city.citycode } : {};
-  const s = pickSector(plan, sector);
+  const s0 = pickSector(plan, sector);
+  // Une rue notée à la fois au bord et dedans traverse le secteur : ce n'est pas un bord.
+  const inner = new Set(s0.dedans.map(norm));
+  const s = { ...s0, bord: s0.bord.filter((r) => !inner.has(norm(r))) };
 
   onStep('rues');
   const look = async (n) => {

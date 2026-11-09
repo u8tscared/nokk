@@ -57,7 +57,7 @@ test('photo du plan : la zone se trace toute seule', async ({ page }) => {
   let sent = null;
   await page.route(/\/plan\/read$/, (r) => {
     sent = r.request().postDataJSON();
-    r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ville: 'Rezé', cp: null, zone: ['Rue des Déportés', 'Rue Alsace Lorraine', 'Rue Imaginaire'], rues: [], adresses: [] }) });
+    r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ville: 'Rezé', cp: null, secteurs: [{ nom: 'PARADIS', bord: ['Rue Ailleurs', 'Rue Loin'], dedans: [] }, { nom: 'MARTIN', bord: ['Rue des Déportés', 'Rue Alsace Lorraine', 'Rue Imaginaire'], dedans: [] }], rues: [], adresses: [] }) });
   });
   const streets = { 'Rue des Déportés': [-1.5571, 47.1781], 'Rue Alsace Lorraine': [-1.5545, 47.1765] };
   await page.route(/data\.geopf\.fr\/geocodage\/search/, (r) => {
@@ -96,7 +96,9 @@ test('photo du plan : la zone se trace toute seule', async ({ page }) => {
   const st = page.getByTestId('auto-status');
   await expect(st).toContainText('Zone tracée', { timeout: 10000 });
   await expect(st).toContainText('2 rues');
-  await expect(st).toContainText('Rue Imaginaire');
+  // Deux secteurs sur le plan : celui au nom de l'équipier du téléphone (Lucas Martin) est choisi.
+  await expect(page.getByTestId('auto-sectors').getByRole('button', { name: 'MARTIN' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('auto-sectors').getByRole('button', { name: 'PARADIS' })).toHaveAttribute('aria-pressed', 'false');
   expect(sent.image).toMatch(/^data:image\/jpeg;base64,/);
   // Le tracé englobe les deux rues, pas la rue d'ailleurs.
   const poly = await page.evaluate(() => window.__nokkCreatorMap.getSource('draw').serialize().data.features.find((f) => f.geometry.type === 'Polygon').geometry.coordinates[0]);

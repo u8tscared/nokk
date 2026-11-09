@@ -74,24 +74,36 @@ export function SectorCreator({ close, photo: initialPhoto }) {
   const autoCtrl = useRef(null);
 
   // Photo du plan : Nokk lit les rues et la ville, puis trace la zone tout seul.
-  async function autoTrace(img) {
+  // Plusieurs secteurs sur le plan : celui qui porte le nom d'un équipier de ce téléphone, sinon le premier.
+  function defaultSector(plan) {
+    const list = plan.secteurs || [];
+    const d = data.value;
+    const me = d.members?.find((x) => x.id === d.meId);
+    const words = (me?.name || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    const i = list.findIndex((x) => x.nom && words.some((w) => x.nom.toLowerCase().includes(w)));
+    return Math.max(0, i);
+  }
+  async function autoTrace(img, { plan: known, sector } = {}) {
     autoCtrl.current?.abort();
     const c = (autoCtrl.current = new AbortController());
     setShowPhoto(false);
-    setAuto({ step: 'lecture' });
+    setAuto({ step: known ? 'rues' : 'lecture' });
     try {
-      const plan = await readPlanPhoto(img, { signal: c.signal });
+      const plan = known || await readPlanPhoto(img, { signal: c.signal });
       if (c.signal.aborted) return;
+      const idx = sector ?? defaultSector(plan);
       const m = mapRef.current;
       const near = m && m.getZoom() > 11 ? m.getCenter().toArray() : position.value?.p;
-      const r = await traceFromPlan(plan, { near, signal: c.signal, onStep: (step) => !c.signal.aborted && setAuto({ step }) });
+      const r = await traceFromPlan(plan, { near, sector: idx, signal: c.signal, onStep: (step) => !c.signal.aborted && setAuto({ step }) });
       if (c.signal.aborted || stageRef.current !== 'draw') return;
       setPoints(r.points);
       setWhole(true);
       feel('done');
       const xs = r.points.map((q) => q[0]), ys = r.points.map((q) => q[1]);
       m?.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { top: 150, bottom: 170, left: 40, right: 40 }, duration: 900, maxZoom: 17.5 });
-      setAuto({ done: true, found: r.found, missing: r.missing, city: r.city });
+      setAuto({ done: true, found: r.found, missing: r.missing, city: r.city, plan, idx });
+      const nom = (plan.secteurs || [])[idx]?.nom;
+      if (nom) setName((v) => (/^Secteur \d+$/.test(v.trim()) || !v.trim() ? nom.charAt(0) + nom.slice(1).toLowerCase() : v));
     } catch (e) {
       if (e?.name === 'AbortError' || c.signal.aborted) return;
       setAuto({ error: e?.code || 'error' });
@@ -403,9 +415,18 @@ export function SectorCreator({ close, photo: initialPhoto }) {
             ) : auto?.done ? (
               <div class="creator-hint" role="status" data-testid="auto-status">
                 <Icon name="sparkle" />
-                <span>Zone tracée d'après le plan{auto.city ? <> · {auto.city}</> : null} · <b>{auto.found.length} rue{auto.found.length > 1 ? 's' : ''}</b>{auto.missing.length > 0 && <> · pas trouvé : {auto.missing.slice(0, 3).join(', ')}</>}. Vérifiez puis <b>Terminer</b>.</span>
+                <span>Zone tracée d'après le plan{auto.city ? <> · {auto.city}</> : null} · <b>{auto.found.length} rue{auto.found.length > 1 ? 's' : ''}</b>. Vérifiez, ajustez au doigt si besoin, puis <b>Terminer</b>.</span>
               </div>
-            ) : auto?.error ? (
+            ) : null}
+            {auto?.done && auto.plan?.secteurs?.length > 1 && (
+              <div class="auto-sectors" data-free data-testid="auto-sectors">
+                <span>Secteurs sur le plan :</span>
+                {auto.plan.secteurs.map((x, i) => (
+                  <button key={i} class="chip" aria-pressed={i === auto.idx} onClick={() => { if (i !== auto.idx) { if (x.nom) setName(x.nom.charAt(0) + x.nom.slice(1).toLowerCase()); autoTrace(photo, { plan: auto.plan, sector: i }); } }}>{x.nom || `Secteur ${i + 1}`}</button>
+                ))}
+              </div>
+            )}
+            {(auto && !auto.done && !auto.error) || auto?.done ? null : auto?.error ? (
               <div class="creator-hint" role="status" data-testid="auto-status">
                 <Icon name="photo" />
                 <span>{AUTO_ERR[auto.error] || "Je n'ai pas réussi à lire ce plan."} Tracez la zone en regardant la photo.</span>

@@ -213,7 +213,7 @@ Lis les noms de rues IMPRIMÉS sur le plan, exactement comme ils sont écrits (a
 Réponds UNIQUEMENT avec ce JSON compact, sans texte autour :
 {"ville":"commune ou null","code_postal":"ou null","secteurs":[{"nom":"nom du secteur (post-it) ou null","bord":["rues le long desquelles passe le trait du contour"],"dedans":["rues entièrement à l'intérieur du contour"]}],"rues":["toutes les autres rues lisibles"]}`;
 
-const cleanList = (v, max = 40) => [...new Set((Array.isArray(v) ? v : []).map((x) => String(x || '').trim()).filter((x) => x.length > 2 && x.length < 120))].slice(0, max);
+const cleanList = (v, max = 40) => [...new Set((Array.isArray(v) ? v : []).map((x) => String(x || '').trim()).filter((x) => x.length > 2 && x.length < 120 && !/^(null|undefined|aucune?|inconnue?)$/i.test(x)))].slice(0, max);
 const cleanStr = (v) => (v && typeof v === 'string' && v.trim() && !/^(null|inconnu|n\/a)$/i.test(v.trim()) ? v.trim().slice(0, 80) : null);
 
 export function parsePlan(text) {
