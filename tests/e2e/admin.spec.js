@@ -91,6 +91,23 @@ test('le créateur voit toutes les amicales, les pompiers et gère les comptes',
   await sheet.getByTestId('admin-acc').filter({ hasText: 'Léa' }).getByTestId('admin-remove').click();
   await sheet.getByTestId('admin-confirm').click();
   await expect(sheet.getByTestId('admin-acc')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+
+  // Un avis envoyé depuis l'app arrive dans « Retours ».
+  await page.evaluate(() => window.__nokk.nav.go('reglages'));
+  await page.getByTestId('avis-entry').click();
+  await page.getByTestId('star-5').click();
+  await page.getByTestId('avis-message').fill('La carte est top');
+  await page.getByTestId('avis-send').click();
+  await expect(page.getByTestId('avis')).toHaveCount(0);
+  await page.evaluate(() => window.__nokk.nav.go('admin'));
+  await page.locator('.seg button', { hasText: 'Retours' }).click();
+  const fb = page.getByTestId('fb-item').filter({ hasText: 'La carte est top' });
+  await expect(fb).toContainText('★★★★★');
+  await expect(fb).toContainText('marceau.ruis@gmail.com');
+  if (process.env.SHOT) await page.waitForTimeout(800), await page.screenshot({ path: process.env.SHOT + '/' + test.info().project.name + '-retours.png' });
+  await fb.getByTestId('fb-done').click();
+  await expect(page.getByTestId('fb-item').filter({ hasText: 'La carte est top' })).toHaveCount(0);
   expect(errors).toEqual([]);
   await ctx.close();
 });

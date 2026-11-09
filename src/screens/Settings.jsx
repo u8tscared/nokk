@@ -17,6 +17,7 @@ import { exportData } from '../lib/store.js';
 import { shareFile } from '../lib/share.js';
 import { formatEuro as fe } from '../lib/model.js';
 import { ShareNokkCard, SoonCard, StartCard, openIntro } from './Start.jsx';
+import { AvisCard } from './Avis.jsx';
 import { account } from '../lib/account.js';
 import { formatEuro } from '../lib/model.js';
 import { versionLabel, updateState, checkUpdate } from '../lib/update.js';
@@ -42,6 +43,7 @@ export function SettingsScreen() {
       {!demo.value && <AdminEntry />}
       {!demo.value && <AccountCard />}
       <ShareNokkCard />
+      <AvisCard />
       <SoonCard />
       <div class="card tight list">
         <Toggle id="snd" label="Son" sub="Petits sons discrets à chaque geste" icon="sound" checked={s.sound} onChange={(v) => saveSettings({ sound: v })} />
@@ -168,6 +170,7 @@ export function MoreScreen() {
       {!demo.value && <AdminEntry />}
       <StartCard compact />
       <ShareNokkCard />
+      <AvisCard />
       <div class="card tight list">
         {items.map((it) => (
           <button class="row" key={it.route} onClick={() => go(it.route)} data-testid={'more-' + it.route}>

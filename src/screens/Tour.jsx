@@ -5,7 +5,8 @@ import { activeSession, startSession, endSession, removeSession, sessionStats, n
 import { formatEuro } from '../lib/model.js';
 import { openSheet } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
-import { data } from '../lib/store.js';
+import { data, settings } from '../lib/store.js';
+import { openAvis } from './Avis.jsx';
 
 export function TourBar() {
   const s = activeSession.value;
@@ -87,6 +88,9 @@ function Report({ id, close }) {
         <div class="hrow between"><span><Icon name="absent" size={18} /> Absents · refus</span><b>{st.absent} · {st.refus}</b></div>
         {st.best && <div class="hrow between"><span><Icon name="sparkle" size={18} /> Meilleure rue</span><b>{st.best.street} · {formatEuro(st.best.amount)}</b></div>}
       </div>
+      {!settings.value.avisAt && (
+        <button class="link-btn center" onClick={() => { close(); setTimeout(() => openAvis('bilan'), 300); }} data-testid="report-avis"><Icon name="heart" size={16} /> Un avis sur Nokk après cette tournée ?</button>
+      )}
       <div class="hrow">
         <Button kind="ghost small" icon="trash" onClick={() => { removeSession(s.id); close(); toast('Tournée retirée des statistiques'); }}>Retirer</Button>
         <Button kind="coral full grow" onClick={close} data-testid="report-ok">Super</Button>

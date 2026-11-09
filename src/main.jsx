@@ -21,6 +21,7 @@ installFreeze();
 installOnline();
 resumeGeoIfGranted();
 captureRef();
+setTimeout(() => import('./screens/Avis.jsx').then((m) => m.flushAvis()), 4000);
 import('./lib/live.js').then((m) => m.installLiveShare());
 import('./lib/callbacks.js').then((m) => m.loadFeatures());
 bootAccount();

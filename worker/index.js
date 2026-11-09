@@ -3,7 +3,7 @@
 
 const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions', 'callbacks']);
-export const FEATURES = ['admin', 'ref', 'callbacks'];
+export const FEATURES = ['admin', 'ref', 'callbacks', 'feedback'];
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const PAGE = 1000;
 const MAX_CHANGES = 500;
@@ -241,6 +241,39 @@ async function qrAnswer(env, token, b) {
   return { ok: true, id };
 }
 
+// ——— Retours (idées, bugs, bravos) : depuis l'app ou la page de présentation ———
+let fbTable = false;
+async function ensureFeedback(env) {
+  if (fbTable) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, at INTEGER NOT NULL, kind TEXT NOT NULL, message TEXT NOT NULL, note INTEGER, contact TEXT, page TEXT, ref TEXT, ua TEXT, uid TEXT, email TEXT, done INTEGER NOT NULL DEFAULT 0)').run();
+  fbTable = true;
+}
+async function addFeedback(env, req, b) {
+  const kind = ['idee', 'bug', 'bravo'].includes(b.kind) ? b.kind : 'idee';
+  const message = String(b.message || '').trim().slice(0, 2000);
+  if (!message) throw new HttpError(400, 'empty');
+  const note = Number.isInteger(b.note) && b.note >= 1 && b.note <= 5 ? b.note : null;
+  const contact = clip(b.contact, 160);
+  let user = null;
+  const auth = req.headers.get('authorization');
+  if (auth) { try { user = await verifyToken(auth.replace(/^Bearer\s+/i, ''), env); } catch { user = null; } }
+  await ensureFeedback(env);
+  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM feedback WHERE at > ?1').bind(Date.now() - 60e3).first();
+  if ((recent?.n || 0) > 30) throw new HttpError(429, 'too_many');
+  await env.DB.prepare('INSERT INTO feedback (id, at, kind, message, note, contact, page, ref, ua, uid, email) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)')
+    .bind(rid('fb_', 8), Date.now(), kind, message, note, contact || null, clip(b.page, 60) || null, clip(b.ref, 16) || null, clip(b.ua, 200) || null, user?.uid || null, user?.email || null).run();
+  return { ok: true };
+}
+async function adminFeedback(env, b) {
+  await ensureFeedback(env);
+  if (b && b.id) {
+    await env.DB.prepare('UPDATE feedback SET done = ?2 WHERE id = ?1').bind(String(b.id), b.done ? 1 : 0).run();
+    return { ok: true };
+  }
+  const { results } = await env.DB.prepare('SELECT * FROM feedback ORDER BY at DESC LIMIT 300').all();
+  return { items: results.map((r) => ({ ...r, done: !!r.done })) };
+}
+
 // ——— Parrainage : qui a fait connaître Nokk à qui ———
 let refTable = false;
 async function ensureRefs(env) {
@@ -278,6 +311,7 @@ const VISIT_STATS = `COUNT(*) AS visits,
 async function adminOverview(env) {
   const now = Date.now();
   await ensureRefs(env);
+  await ensureFeedback(env);
   const q = (sql, ...a) => env.DB.prepare(sql).bind(...a).all().then((r) => r.results);
   const [accounts, teams, memberships, byTeam, byUser, counts, days, refs] = await Promise.all([
     q('SELECT uid, email, name, created_at, seen_at FROM accounts ORDER BY COALESCE(seen_at, created_at) DESC'),
@@ -289,6 +323,7 @@ async function adminOverview(env) {
     q(`SELECT CAST(json_extract(data,'$.ts') / ${DAY} AS INTEGER) AS d, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 AND json_extract(data,'$.ts') > ?1 GROUP BY d ORDER BY d`, now - 30 * DAY),
     q('SELECT uid, by_uid FROM referrals'),
   ]);
+  const fb = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(CASE WHEN done = 0 THEN 1 ELSE 0 END) AS open FROM feedback').first();
   const stat = (r) => ({ visits: r?.visits || 0, calendars: r?.calendars || 0, amount: r?.amount || 0, last: r?.last || null });
   const tStats = new Map(byTeam.map((r) => [r.team_id, stat(r)]));
   const uStats = new Map(byUser.map((r) => [r.uid, stat(r)]));
@@ -308,7 +343,7 @@ async function adminOverview(env) {
   return {
     at: now,
     totals: { accounts: accounts.length, teams: teams.length, active7: accounts.filter((a) => a.seen_at > now - 7 * DAY).length,
-      visits: sum('visits'), calendars: sum('calendars'), amount: sum('amount'), doors: sum('doors'), sectors: sum('sectors'), tours: sum('tours'), members: sum('members'), referrals: refs.length },
+      visits: sum('visits'), calendars: sum('calendars'), amount: sum('amount'), doors: sum('doors'), sectors: sum('sectors'), tours: sum('tours'), members: sum('members'), referrals: refs.length, feedback: fb?.n || 0, feedbackOpen: fb?.open || 0 },
     days: days.map((r) => ({ day: r.d * DAY, ...stat(r) })),
     teams: outTeams, accounts: outAccounts,
   };
@@ -446,6 +481,10 @@ export default {
         const r = await env.DB.prepare('SELECT COUNT(*) AS n FROM teams').first();
         return json({ ok: true, app: 'nokk-api', teams: r?.n ?? 0, features: FEATURES }, 200, h);
       }
+      if (path === '/feedback' && req.method === 'POST') {
+        if (!allowedOrigin(req.headers.get('origin'), env)) throw new HttpError(403, 'origin');
+        return json(await addFeedback(env, req, await body(req)), 200, h);
+      }
       // Page publique « Repassez plus tard » : sans compte, depuis le site seulement.
       let qm;
       if ((qm = /^\/r\/([A-Za-z0-9]+)$/.exec(path))) {
@@ -470,6 +509,8 @@ export default {
       else if ((m = /^\/teams\/([\w-]+)\/export$/.exec(path)) && req.method === 'GET') out = await exportTeam(env, user, m[1]);
       else if (path === '/ref' && req.method === 'POST') out = await addRef(env, user, await body(req));
       else if (path === '/ref/count' && req.method === 'GET') out = await refCount(env, user);
+      else if (path === '/admin/feedback' && req.method === 'GET') { needAdmin(user, env); out = await adminFeedback(env); }
+      else if (path === '/admin/feedback' && req.method === 'POST') { needAdmin(user, env); out = await adminFeedback(env, await body(req)); }
       else if (path === '/admin' && req.method === 'GET') { needAdmin(user, env); out = await adminOverview(env); }
       else if ((m = /^\/admin\/teams\/([\w-]+)$/.exec(path)) && req.method === 'GET') { needAdmin(user, env); out = await adminTeam(env, m[1]); }
       else if ((m = /^\/admin\/teams\/([\w-]+)\/member$/.exec(path)) && req.method === 'POST') { needAdmin(user, env); out = await adminMember(env, m[1], await body(req)); }

@@ -14,7 +14,7 @@ import { cacheSectorTiles } from '../lib/offline.js';
 import { bbox } from '../lib/geo.js';
 import { account, inviteLink } from '../lib/account.js';
 import { markStart, StartCard } from './Start.jsx';
-import { openQrCards, CallbacksBar } from './Repasser.jsx';
+import { openQrCards, CallbacksBar, QrEntryCard } from './Repasser.jsx';
 
 function SectorCard({ s }) {
   const doors = doorsBySector.value.get(s.id) || [];
@@ -255,6 +255,7 @@ export function SectorsScreen() {
       <StartCard compact />
       <CallbacksBar />
       {role.value !== 'pompier' && <SectorBoard />}
+      <QrEntryCard />
       {d.sectors.length === 0 ? (
         <div class="card">
           <Empty icon="sectors" title="Votre premier secteur" text="Tracez votre zone sur la carte. Nokk trouve les rues, les numéros et le parcours le plus court." action={<Button kind="full" icon="draw" onClick={openCreateChooser} data-testid="new-sector">Créer un secteur</Button>} />

@@ -107,3 +107,18 @@ function CallbacksSheet({ close }) {
     </div>
   );
 }
+
+/** Carte visible dans Secteurs : l'entrée vers les cartes QR, secteur par secteur. */
+export function QrEntryCard() {
+  const sectors = data.value.sectors;
+  if (!sectors.length) return null;
+  const printed = sectors.reduce((a, s) => a + (s.qrPrinted || 0), 0);
+  return (
+    <div class="card qr-entry" data-testid="qr-entry">
+      <div class="hrow"><DotIcon icon="qr" tone="bad" /><div class="grow"><div class="card-title">Cartes « Repassez plus tard »</div><div class="small muted">Pour les absents : une carte QR dans la boîte, l'habitant choisit quand on repasse.{printed ? ` ${printed} cartes imprimées.` : ''}</div></div></div>
+      <div class="chips" style={{ marginTop: 10 }}>
+        {sectors.map((s) => <button class="chip" key={s.id} onClick={() => openQrCards(s)} data-testid={'qr-entry-' + s.id}><Icon name="qr" size={16} /> {s.name}</button>)}
+      </div>
+    </div>
+  );
+}

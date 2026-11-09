@@ -63,9 +63,10 @@ export function AdminScreen() {
       {loading && !o && <div class="card admin-skel" aria-busy="true"><span /><span /><span /></div>}
       {o && (
         <>
-          <Seg label="Vue" value={tab} onChange={setTab} options={[{ value: 'vue', label: 'Résumé' }, { value: 'equipes', label: `Amicales ${o.teams.length}` }, { value: 'comptes', label: `Comptes ${o.accounts.length}` }]} />
+          <Seg label="Vue" value={tab} onChange={setTab} options={[{ value: 'vue', label: 'Résumé' }, { value: 'equipes', label: 'Amicales' }, { value: 'comptes', label: 'Comptes' }, { value: 'retours', label: `Retours${o.totals.feedbackOpen ? ' ' + o.totals.feedbackOpen : ''}` }]} />
           {tab === 'vue' && <Overview o={o} onTab={setTab} />}
-          {tab !== 'vue' && (
+          {tab === 'retours' && <Feedback at={o.at} reload={reload} />}
+          {tab !== 'vue' && tab !== 'retours' && (
             <div class="admin-search">
               <Icon name="search" />
               <input class="input" type="search" placeholder={tab === 'equipes' ? 'Chercher une amicale, un code…' : 'Chercher un nom, un e-mail…'} value={q} onInput={(e) => setQ(e.currentTarget.value)} autoComplete="off" enterKeyHint="search" data-testid="admin-search" />
@@ -250,6 +251,42 @@ function TeamSheet({ t, reload }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+const KIND = { idee: ['Idée', 'sparkle', 'info'], bug: ['Souci', 'help', 'bad'], bravo: ['Bravo', 'heart', 'ok'] };
+function Feedback({ at, reload }) {
+  const [{ data: d, error }, load] = useLoad('/admin/feedback');
+  const [show, setShow] = useState('open');
+  if (error && !d) return <div class="card small muted">{errText(error)} <button class="link-btn" onClick={load}>Réessayer</button></div>;
+  if (!d) return <div class="card admin-skel" aria-busy="true"><span /><span /></div>;
+  const list = d.items.filter((x) => (show === 'open' ? !x.done : true));
+  const mark = async (x) => {
+    try { await api('/admin/feedback', { method: 'POST', body: { id: x.id, done: !x.done } }); load(); reload?.(); } catch (e) { toast(errText(e), { error: true }); }
+  };
+  return (
+    <div class="stack s8" data-testid="admin-feedback">
+      <Seg label="Filtre" value={show} onChange={setShow} options={[{ value: 'open', label: 'À lire' }, { value: 'all', label: `Tous · ${d.items.length}` }]} />
+      {!list.length && <Empty icon="note" title="Rien à lire" text="Les avis envoyés depuis l'app et la page de présentation arrivent ici." />}
+      {list.map((x) => {
+        const k = KIND[x.kind] || KIND.idee;
+        return (
+          <div class={'card fb-item' + (x.done ? ' done' : '')} key={x.id} data-testid="fb-item">
+            <div class="hrow">
+              <DotIcon icon={k[1]} tone={k[2]} sm />
+              <b class="grow">{k[0]}{x.note ? ' · ' + '★'.repeat(x.note) : ''}</b>
+              <span class="tiny muted">{ago(x.at, at)}</span>
+            </div>
+            <p class="fb-msg">{x.message}</p>
+            <div class="tiny muted">{[x.email || x.contact, x.page === 'landing' ? 'page de présentation' : x.page ? "dans l'app (" + x.page + ')' : null].filter(Boolean).join(' · ') || 'anonyme'}</div>
+            <div class="hrow admin-actions">
+              {(x.email || x.contact) && <a class="link-btn" href={`mailto:${x.email || x.contact}?subject=${encodeURIComponent('Votre avis sur Nokk')}`}>Répondre</a>}
+              <button class="link-btn" onClick={() => mark(x)} data-testid="fb-done">{x.done ? 'Remettre à lire' : 'Marquer comme lu'}</button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

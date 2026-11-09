@@ -171,6 +171,21 @@ describe('API Nokk', () => {
     expect((await call(null, 'GET', '/health')).body.features).toContain('callbacks');
   });
 
+  it('retours : depuis la page ou l\'app, lus et traités dans l\'admin', async () => {
+    const pub = (b, origin = 'https://u8tscared.github.io') => call(null, 'POST', '/feedback', b, origin);
+    expect((await pub({ kind: 'idee', message: '' })).status).toBe(400);
+    expect((await pub({ kind: 'bug', message: 'x' }, 'https://autre.fr')).status).toBe(403);
+    expect((await pub({ kind: 'idee', message: 'Un mode nuit', note: 5, contact: 'a@b.fr', page: 'landing' })).body.ok).toBe(true);
+    expect((await call('pompfb', 'POST', '/feedback', { kind: 'bravo', message: 'Top', page: 'reglages' })).body.ok).toBe(true);
+    const admin = (method, path, b) => call('boss', method, path, b, undefined, { email: 'marceau.ruis@gmail.com', firebase: { sign_in_provider: 'google.com' } });
+    expect((await call('pompfb', 'GET', '/admin/feedback')).status).toBe(403);
+    const list = (await admin('GET', '/admin/feedback')).body.items;
+    expect(list.find((x) => x.kind === 'bravo')).toMatchObject({ message: 'Top', email: 'pompfb@ex.fr', page: 'reglages' });
+    expect(list.find((x) => x.kind === 'idee')).toMatchObject({ note: 5, contact: 'a@b.fr', uid: null });
+    await admin('POST', '/admin/feedback', { id: list[0].id, done: true });
+    expect((await admin('GET', '/admin')).body.totals).toMatchObject({ feedback: 2, feedbackOpen: 1 });
+  });
+
   it('rejette les données invalides', async () => {
     const t = (await call('c', 'POST', '/teams', { name: 'X' })).body;
     expect((await call('c', 'POST', '/sync', { teamId: t.id, changes: [{ k: 'hack', i: 'x', d: {} }] })).status).toBe(400);
