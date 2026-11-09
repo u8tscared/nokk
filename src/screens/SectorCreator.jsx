@@ -141,7 +141,8 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     });
     map.on('click', (e) => {
       if (stageRef.current !== 'draw') return;
-      if (fingerRef.current || Date.now() - strokeEnd.current < 400) return;
+      if (fingerRef.current) return;
+      if (strokeEnd.current && Date.now() - strokeEnd.current < 400) { strokeEnd.current = 0; return; }
       if (modeRef.current !== 'hole') setWhole(false);
       feel('tick');
       const p = [e.lngLat.lng, e.lngLat.lat];
