@@ -11,6 +11,8 @@ import { installTheme } from './lib/theme.js';
 import { installOnline } from './lib/offline.js';
 import { resumeGeoIfGranted } from './lib/geoloc.js';
 import { bootAccount } from './lib/account.js';
+import { captureRef } from './screens/Start.jsx';
+import { wantsDemo } from './lib/nav.js';
 
 installTheme();
 installRouter();
@@ -18,9 +20,11 @@ installKeyboard();
 installFreeze();
 installOnline();
 resumeGeoIfGranted();
+captureRef();
 bootAccount();
 
 render(<App />, document.getElementById('app'));
+if (wantsDemo) import('./lib/demoMode.js').then((m) => m.startDemo());
 
 // Écran d'ouverture court.
 const splash = document.getElementById('splash');

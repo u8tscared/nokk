@@ -51,10 +51,19 @@ export function moreFor(member, simple = false) {
 // ——— Routeur (hash + historique propre) ———
 let initial = typeof location !== 'undefined' ? location.hash.replace(/^#\/?/, '') : '';
 // Lien d'invitation : #join=CODE (gardé jusqu'à la connexion).
+// Avec un secteur et un équipier : #join=CODE&s=SECTEUR&m=EQUIPIER (« vous êtes affecté au secteur… »).
 if (/^join=/.test(initial)) {
-  try { localStorage.setItem('nokk:join', initial.slice(5).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); } catch {}
+  const q = new URLSearchParams(initial);
+  try {
+    localStorage.setItem('nokk:join', String(q.get('join') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+    const extra = { s: q.get('s') || null, m: q.get('m') || null };
+    if (extra.s || extra.m) localStorage.setItem('nokk:join:to', JSON.stringify(extra));
+  } catch {}
   initial = 'carte';
 }
+// Lien profond vers la démo (depuis la page de présentation).
+export const wantsDemo = initial === 'demo';
+if (wantsDemo) initial = 'carte';
 export const route = signal(initial || 'carte');
 export const sheets = signal([]); // [{ id, render, opts }]
 

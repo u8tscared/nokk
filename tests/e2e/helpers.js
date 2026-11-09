@@ -30,3 +30,11 @@ export async function noHorizontalScroll(page) {
   expect(over.doc, 'la page ne défile pas sur le côté').toBeLessThanOrEqual(1);
   expect(over.page, "l'écran ne défile pas sur le côté").toBeLessThanOrEqual(1);
 }
+
+// Après la création d'équipe, la présentation animée s'ouvre : on la passe.
+export async function skipIntro(page) {
+  const intro = page.getByTestId('intro');
+  await intro.waitFor({ timeout: 5000 });
+  await intro.getByTestId('intro-skip').click();
+  await intro.waitFor({ state: 'detached' });
+}

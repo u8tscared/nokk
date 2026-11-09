@@ -53,6 +53,7 @@ async function afterSignIn(u) {
   accountError.value = null;
   try {
     const me = await api('/me');
+    import('../screens/Start.jsx').then((m) => m.sendRef()).catch(() => {});
     const base = { uid: u.uid, email: u.email || me.email, name: u.name || me.name, admin: !!me.admin };
     const code = pendingJoin();
     if (code) {
@@ -90,6 +91,20 @@ async function attach(base, team, { existing }) {
   if (!d.meId && team.memberId && d.members.some((m) => m.id === team.memberId)) {
     setData((x) => ({ ...x, meId: team.memberId, crew: x.crew?.length ? x.crew : [team.memberId] }));
   }
+  applyJoinTarget();
+}
+
+// Lien d'affectation : on se place directement dans le bon secteur, sur le bon profil.
+function applyJoinTarget() {
+  let to = null;
+  try { to = JSON.parse(localStorage.getItem('nokk:join:to') || 'null'); } catch {}
+  if (!to) return;
+  const d = data.peek();
+  const patch = {};
+  if (to.m && !d.meId && d.members.some((m) => m.id === to.m)) Object.assign(patch, { meId: to.m, crew: [to.m] });
+  if (to.s && d.sectors.some((s) => s.id === to.s)) patch.currentSectorId = to.s;
+  if (Object.keys(patch).length) setData((x) => ({ ...x, ...patch }));
+  try { localStorage.removeItem('nokk:join:to'); } catch {}
 }
 
 // Après la création de l'équipe dans l'app (assistant) : on la crée sur le serveur.
@@ -139,6 +154,6 @@ export async function downloadBackup() {
   return api(`/teams/${a.team.id}/export`);
 }
 
-export const inviteLink = (code) => `https://u8tscared.github.io/nokk/#join=${code}`;
+export const inviteLink = (code, { s, m } = {}) => `https://u8tscared.github.io/nokk/#join=${code}${s ? '&s=' + encodeURIComponent(s) : ''}${m ? '&m=' + encodeURIComponent(m) : ''}`;
 
 export { stopSync };

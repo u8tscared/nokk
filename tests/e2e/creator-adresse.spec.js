@@ -1,5 +1,6 @@
 // Tracer un secteur : on cherche une adresse pour s'y rendre, et les numéros de rue s'affichent pour se repérer.
 import { test, expect } from '@playwright/test';
+import { skipIntro } from './helpers.js';
 
 test('rechercher une adresse et voir les numéros de rue en traçant', async ({ page }) => {
   await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
@@ -27,6 +28,7 @@ test('rechercher une adresse et voir les numéros de rue en traçant', async ({ 
   await page.getByTestId('ob-next').click();
   await page.locator('#opartner').fill('Inès Diallo');
   for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
+  await skipIntro(page);
   await page.getByTestId('new-sector').click();
   await page.waitForFunction(() => !!window.__nokkCreatorMap);
 
@@ -89,6 +91,7 @@ test('photo du plan : la zone se trace toute seule', async ({ page }) => {
   await page.getByTestId('ob-next').click();
   await page.locator('#opartner').fill('Inès Diallo');
   for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
+  await skipIntro(page);
   await page.getByTestId('new-sector').click();
   await page.waitForFunction(() => !!window.__nokkCreatorMap);
 
@@ -127,6 +130,7 @@ test('tracer au doigt et retirer une zone où on ne passe pas', async ({ page })
   await page.getByTestId('ob-next').click();
   await page.locator('#opartner').fill('Inès Diallo');
   for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
+  await skipIntro(page);
   await page.getByTestId('new-sector').click();
   await page.waitForFunction(() => !!window.__nokkCreatorMap);
   await page.waitForTimeout(600);

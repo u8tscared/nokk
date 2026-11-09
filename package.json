@@ -16,7 +16,8 @@
     "jspdf": "3.0.1",
     "jspdf-autotable": "5.0.2",
     "maplibre-gl": "4.7.1",
-    "preact": "10.24.3"
+    "preact": "10.24.3",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

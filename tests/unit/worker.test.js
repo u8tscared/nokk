@@ -138,6 +138,18 @@ describe('API Nokk', () => {
     expect((await call('chef1', 'POST', `/admin/teams/${t.id}/member`, { uid: 'chef1', action: 'remove' })).status).toBe(403);
   });
 
+  it('parrainage : le lien ?ref= compte qui a fait venir qui', async () => {
+    await call('parrain123', 'GET', '/me');
+    await call('filleul1', 'GET', '/me');
+    expect((await call('filleul1', 'POST', '/ref', { code: 'parrain1' })).body.ok).toBe(true);
+    await call('filleul1', 'POST', '/ref', { code: 'parrain1' });
+    expect((await call('parrain123', 'POST', '/ref', { code: 'parrain1' })).body.ok).toBe(false);
+    expect((await call('parrain123', 'GET', '/ref/count')).body.count).toBe(1);
+    const o = (await call('boss', 'GET', '/admin', undefined, undefined, { email: 'marceau.ruis@gmail.com', firebase: { sign_in_provider: 'google.com' } })).body;
+    expect(o.accounts.find((a) => a.uid === 'filleul1').invitedBy).toBe('parrain123@ex.fr');
+    expect(o.accounts.find((a) => a.uid === 'parrain123').invited).toBe(1);
+  });
+
   it('rejette les données invalides', async () => {
     const t = (await call('c', 'POST', '/teams', { name: 'X' })).body;
     expect((await call('c', 'POST', '/sync', { teamId: t.id, changes: [{ k: 'hack', i: 'x', d: {} }] })).status).toBe(400);

@@ -38,3 +38,9 @@ CREATE TABLE IF NOT EXISTS items (
   PRIMARY KEY (team_id, kind, id)
 );
 CREATE INDEX IF NOT EXISTS items_seq ON items(team_id, seq);
+
+CREATE TABLE IF NOT EXISTS referrals (
+  uid TEXT PRIMARY KEY,
+  by_uid TEXT NOT NULL,
+  at INTEGER NOT NULL
+);

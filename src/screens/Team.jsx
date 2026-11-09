@@ -12,6 +12,7 @@ import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { shareFile } from '../lib/share.js';
 import { ImportCard } from './Money.jsx';
+import { ShareNokkCard } from './Start.jsx';
 
 const COLORS = ['#367a6d', '#d9554f', '#3f6c8f', '#b7791f', '#6b5ca5', '#12262a', '#2c7a59', '#a14e78'];
 
@@ -184,6 +185,7 @@ export function TeamScreen() {
         </div>
       </div>
       <ImportCard />
+      <ShareNokkCard />
     </div>
   );
 }

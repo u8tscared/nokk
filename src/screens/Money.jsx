@@ -12,6 +12,7 @@ import { inputKinds } from '../lib/keyboard.js';
 const euro = (c) => formatEuro(c);
 
 import { ToursCard } from './Tour.jsx';
+import { SoonCard } from './Start.jsx';
 
 // ——— Caisse ———
 
@@ -107,6 +108,7 @@ export function CaisseScreen() {
         </div>
         <Button kind="coral small" icon="cash" disabled={!p.count} onClick={handover} data-testid="handover">Remettre</Button>
       </div>
+      <SoonCard />
     </div>
   );
 }

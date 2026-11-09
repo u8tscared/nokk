@@ -1,6 +1,6 @@
 // Parcours réel d'une soirée : porte suivante, don, absent, annuler, caisse, exports.
 import { test, expect } from '@playwright/test';
-import { startDemo, isDesktop } from './helpers.js';
+import { startDemo, isDesktop, skipIntro } from './helpers.js';
 
 const count = (page) => page.evaluate(() => window.__nokk.store.data.value.visits.length);
 
@@ -110,6 +110,7 @@ test('créer son équipe puis un secteur tracé sur la carte', async ({ page }) 
   await page.getByTestId('ob-next').click();
   await page.getByTestId('ob-next').click(); // don
   await page.getByTestId('ob-next').click(); // écran d'accueil
+  await skipIntro(page);
   await expect(page.getByTestId('screen-secteurs')).toBeVisible();
   // Le secteur se crée depuis l'écran Secteurs, carte dans la fenêtre.
   await page.getByTestId('new-sector').click();

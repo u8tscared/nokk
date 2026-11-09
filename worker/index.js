@@ -205,6 +205,28 @@ async function exportTeam(env, user, teamId) {
 }
 
 
+// ——— Parrainage : qui a fait connaître Nokk à qui ———
+let refTable = false;
+async function ensureRefs(env) {
+  if (refTable) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS referrals (uid TEXT PRIMARY KEY, by_uid TEXT NOT NULL, at INTEGER NOT NULL)').run();
+  refTable = true;
+}
+async function addRef(env, user, b) {
+  const code = String(b.code || '').replace(/[^\w-]/g, '').slice(0, 16);
+  if (code.length < 4) throw new HttpError(400, 'bad_code');
+  await ensureRefs(env);
+  const by = await env.DB.prepare('SELECT uid FROM accounts WHERE substr(uid, 1, ?2) = ?1 LIMIT 1').bind(code, code.length).first();
+  if (!by || by.uid === user.uid) return { ok: false };
+  const r = await env.DB.prepare('INSERT INTO referrals (uid, by_uid, at) VALUES (?1, ?2, ?3) ON CONFLICT(uid) DO NOTHING').bind(user.uid, by.uid, Date.now()).run();
+  return { ok: true, added: !!r.meta?.changes };
+}
+async function refCount(env, user) {
+  await ensureRefs(env);
+  const r = await env.DB.prepare('SELECT COUNT(*) AS n FROM referrals WHERE by_uid = ?1').bind(user.uid).first();
+  return { count: r?.n || 0 };
+}
+
 // ——— Espace admin (propriétaire de Nokk) ———
 export function isAdmin(user, env) {
   const list = String(env.ADMINS || 'marceau.ruis@gmail.com').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
@@ -219,8 +241,9 @@ const VISIT_STATS = `COUNT(*) AS visits,
 
 async function adminOverview(env) {
   const now = Date.now();
+  await ensureRefs(env);
   const q = (sql, ...a) => env.DB.prepare(sql).bind(...a).all().then((r) => r.results);
-  const [accounts, teams, memberships, byTeam, byUser, counts, days] = await Promise.all([
+  const [accounts, teams, memberships, byTeam, byUser, counts, days, refs] = await Promise.all([
     q('SELECT uid, email, name, created_at, seen_at FROM accounts ORDER BY COALESCE(seen_at, created_at) DESC'),
     q('SELECT id, name, code, owner, created_at FROM teams ORDER BY created_at DESC'),
     q('SELECT team_id, uid, member_id, role, joined_at FROM memberships'),
@@ -228,6 +251,7 @@ async function adminOverview(env) {
     q(`SELECT "by" AS uid, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 GROUP BY "by"`),
     q("SELECT team_id, kind, COUNT(*) AS n, MAX(updated_at) AS last FROM items WHERE deleted = 0 AND kind IN ('members','sectors','doors','sessions') GROUP BY team_id, kind"),
     q(`SELECT CAST(json_extract(data,'$.ts') / ${DAY} AS INTEGER) AS d, ${VISIT_STATS} FROM items WHERE kind = 'visits' AND deleted = 0 AND json_extract(data,'$.ts') > ?1 GROUP BY d ORDER BY d`, now - 30 * DAY),
+    q('SELECT uid, by_uid FROM referrals'),
   ]);
   const stat = (r) => ({ visits: r?.visits || 0, calendars: r?.calendars || 0, amount: r?.amount || 0, last: r?.last || null });
   const tStats = new Map(byTeam.map((r) => [r.team_id, stat(r)]));
@@ -242,12 +266,13 @@ async function adminOverview(env) {
   });
   const outAccounts = accounts.map((a) => ({ uid: a.uid, email: a.email, name: a.name, createdAt: a.created_at, seenAt: a.seen_at,
     teams: memberships.filter((m) => m.uid === a.uid).map((m) => ({ id: m.team_id, name: tName.get(m.team_id) || '?', role: m.role })),
+    invited: refs.filter((r) => r.by_uid === a.uid).length, invitedBy: email.get(refs.find((r) => r.uid === a.uid)?.by_uid) || null,
     ...uStats.get(a.uid) || stat() }));
   const sum = (k) => outTeams.reduce((n, t) => n + (t[k] || 0), 0);
   return {
     at: now,
     totals: { accounts: accounts.length, teams: teams.length, active7: accounts.filter((a) => a.seen_at > now - 7 * DAY).length,
-      visits: sum('visits'), calendars: sum('calendars'), amount: sum('amount'), doors: sum('doors'), sectors: sum('sectors'), tours: sum('tours'), members: sum('members') },
+      visits: sum('visits'), calendars: sum('calendars'), amount: sum('amount'), doors: sum('doors'), sectors: sum('sectors'), tours: sum('tours'), members: sum('members'), referrals: refs.length },
     days: days.map((r) => ({ day: r.d * DAY, ...stat(r) })),
     teams: outTeams, accounts: outAccounts,
   };
@@ -400,6 +425,8 @@ export default {
       else if (path === '/sync' && req.method === 'POST') out = await sync(env, user, await body(req));
       else if ((m = /^\/teams\/([\w-]+)\/link$/.exec(path)) && req.method === 'POST') out = await link(env, user, m[1], await body(req));
       else if ((m = /^\/teams\/([\w-]+)\/export$/.exec(path)) && req.method === 'GET') out = await exportTeam(env, user, m[1]);
+      else if (path === '/ref' && req.method === 'POST') out = await addRef(env, user, await body(req));
+      else if (path === '/ref/count' && req.method === 'GET') out = await refCount(env, user);
       else if (path === '/admin' && req.method === 'GET') { needAdmin(user, env); out = await adminOverview(env); }
       else if ((m = /^\/admin\/teams\/([\w-]+)$/.exec(path)) && req.method === 'GET') { needAdmin(user, env); out = await adminTeam(env, m[1]); }
       else if ((m = /^\/admin\/teams\/([\w-]+)\/member$/.exec(path)) && req.method === 'POST') { needAdmin(user, env); out = await adminMember(env, m[1], await body(req)); }

@@ -12,6 +12,8 @@ import { inputKinds } from '../lib/keyboard.js';
 import { shareFile } from '../lib/share.js';
 import { cacheSectorTiles } from '../lib/offline.js';
 import { bbox } from '../lib/geo.js';
+import { account, inviteLink } from '../lib/account.js';
+import { markStart, StartCard } from './Start.jsx';
 
 function SectorCard({ s }) {
   const doors = doorsBySector.value.get(s.id) || [];
@@ -77,6 +79,11 @@ function SectorOptions({ s, close }) {
           ))}
         </div>
       </div>
+      {assignees.length > 0 && (
+        <Button kind="soft full" icon="mail" onClick={() => { close(); setTimeout(() => openSheet(({ close: c }) => <AssignSend s={s} close={c} />, { label: 'Prévenir l\'équipe' }), 300); }} data-testid="assign-send">
+          Prévenir {assignees.length > 1 ? 'les équipiers' : memberById.value.get(assignees[0])?.name.split(' ')[0] || 'l\'équipier'}
+        </Button>
+      )}
       {s.photos?.length > 0 && (
         <div class="field"><span class="label">Photo du plan</span><img class="plan-thumb" src={s.photos[0]} alt={'Plan du ' + s.name} /></div>
       )}
@@ -105,6 +112,46 @@ function SectorOptions({ s, close }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+export function assignMessage(s, m) {
+  const d = data.value;
+  const mates = (s.assignees || []).filter((id) => id !== m.id).map((id) => memberById.value.get(id)?.name.split(' ')[0]).filter(Boolean);
+  const t = account.value?.team;
+  const link = t ? inviteLink(t.code, { s: s.id, m: m.id }) : 'https://u8tscared.github.io/nokk/';
+  const doors = (doorsBySector.value.get(s.id) || []).length;
+  return {
+    subject: `Tournée des calendriers : ${s.name}`,
+    text: `Salut ${m.name.split(' ')[0]} ! Pour la tournée des calendriers${d.org?.year ? ' ' + d.org.year : ''}, tu es affecté au secteur « ${s.name} »${mates.length ? ' avec ' + mates.join(' et ') : ''} (${doors} portes). Tout est prêt dans Nokk, la carte et le parcours : ${link}${t ? ` (code équipe ${t.code})` : ''}`,
+  };
+}
+
+function AssignSend({ s, close }) {
+  const people = (s.assignees || []).map((id) => memberById.value.get(id)).filter(Boolean);
+  const [sent, setSent] = useState([]);
+  const done = (id) => { setSent((x) => [...new Set([...x, id])]); markStart('team'); };
+  return (
+    <div class="stack" data-testid="assign-sheet">
+      <div class="sheet-head"><div><div class="tiny muted">Affectation</div><h2>{s.name}</h2></div></div>
+      {!account.value?.team && <p class="small muted">Astuce : connectez-vous dans Réglages pour que le lien les fasse entrer directement dans l'équipe.</p>}
+      {people.map((m) => {
+        const msg = assignMessage(s, m);
+        return (
+          <div class="card assign-card" key={m.id} data-testid="assign-person">
+            <div class="hrow"><Avatar m={m} /><b class="grow">{m.name}</b>{sent.includes(m.id) && <span class="pill tone-ok">Envoyé</span>}</div>
+            <p class="small assign-msg">{msg.text}</p>
+            <div class="hrow">
+              <Button kind="small grow" icon="share" onClick={async () => {
+                try { if (navigator.share) await navigator.share({ title: msg.subject, text: msg.text }); else { await navigator.clipboard.writeText(msg.text); toast('Message copié'); } done(m.id); } catch (e) { if (e?.name !== 'AbortError') toast('Partage impossible ici', { error: true }); }
+              }} data-testid="assign-share">Envoyer</Button>
+              <a class="btn soft small" href={`mailto:?subject=${encodeURIComponent(msg.subject)}&body=${encodeURIComponent(msg.text)}`} onClick={() => done(m.id)}><Icon name="mail" /> E-mail</a>
+              <a class="btn soft small" href={`sms:?&body=${encodeURIComponent(msg.text)}`} onClick={() => done(m.id)}><Icon name="phone" /> SMS</a>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -149,6 +196,49 @@ function AddDoor({ s, close }) {
   );
 }
 
+// Tableau de bord du chef : avancement de chaque secteur, ce qu'il rapporte, et la comparaison avec l'an dernier.
+function SectorBoard() {
+  const d = data.value;
+  const rows = d.sectors.map((s) => {
+    const doors = doorsBySector.value.get(s.id) || [];
+    const st = sectorStats(doors, byDoor.value);
+    const knocked = st.done + st.absent + (st.partiel || 0);
+    // Mêmes portes que l'an dernier, déjà repassées cette année.
+    let ly = 0, cur = 0;
+    for (const x of doors) {
+      if (!x.lastYear?.amount) continue;
+      const gifts = (byDoor.value.get(x.id) || []).filter((v) => v.result === 'donne');
+      if (!gifts.length) continue;
+      ly += x.lastYear.amount;
+      cur += gifts.reduce((a, v) => a + (v.amount || 0), 0);
+    }
+    return { s, st, perDoor: knocked ? Math.round(st.amount / knocked / 10) * 10 : 0, vs: ly ? Math.round(((cur - ly) / ly) * 100) : null };
+  });
+  if (rows.length < 2) return null;
+  const sum = rows.reduce((a, r) => ({ done: a.done + r.st.done, total: a.total + r.st.total, amount: a.amount + r.st.amount }), { done: 0, total: 0, amount: 0 });
+  const pct = sum.total ? Math.round((sum.done / sum.total) * 100) : 0;
+  const best = [...rows].sort((a, b) => b.perDoor - a.perDoor);
+  const max = Math.max(1, ...rows.map((r) => r.perDoor));
+  return (
+    <div class="card board" data-testid="sector-board">
+      <div class="hrow between">
+        <div><div class="tiny muted">Tableau de bord</div><div class="card-title">{pct} % de la campagne faite</div></div>
+        <div class="right"><div class="big-num" style={{ fontSize: 22 }}>{formatEuro(sum.amount)}</div><div class="tiny muted">{sum.done} / {sum.total} portes</div></div>
+      </div>
+      <div class="board-rows">
+        {best.map((r) => (
+          <button class="board-row" key={r.s.id} onClick={() => openSheet(({ close }) => <SectorOptions s={r.s} close={close} />, { label: r.s.name })}>
+            <span class="board-name"><b>{r.s.name}</b><span class="tiny muted">{r.st.pct} % · {(r.s.assignees || []).map((id) => memberById.value.get(id)?.name.split(' ')[0]).filter(Boolean).join(', ') || 'personne'}</span></span>
+            <span class="board-bar"><i style={{ width: (r.perDoor / max) * 100 + '%' }} /></span>
+            <span class="board-val"><b>{formatEuro(r.perDoor)}</b><span class="tiny muted">/porte{r.vs != null ? ` · ${r.vs >= 0 ? '+' : ''}${r.vs} %` : ''}</span></span>
+          </button>
+        ))}
+      </div>
+      <p class="tiny muted">Classés par euros par porte frappée. Le pourcentage compare aux mêmes portes l'an dernier. Touchez un secteur pour changer son équipe.</p>
+    </div>
+  );
+}
+
 export function SectorsScreen() {
   const d = data.value;
   const t = totals(d.visits);
@@ -158,6 +248,8 @@ export function SectorsScreen() {
       <div class="page-head">
         <div><h1>Secteurs</h1><div class="sub">{d.sectors.length} secteurs · {d.doors.length} portes · {formatEuro(t.amount)}</div></div>
       </div>
+      <StartCard compact />
+      {role.value !== 'pompier' && <SectorBoard />}
       {d.sectors.length === 0 ? (
         <div class="card">
           <Empty icon="sectors" title="Votre premier secteur" text="Tracez votre zone sur la carte. Nokk trouve les rues, les numéros et le parcours le plus court." action={<Button kind="full" icon="draw" onClick={openCreateChooser} data-testid="new-sector">Créer un secteur</Button>} />

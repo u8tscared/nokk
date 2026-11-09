@@ -177,6 +177,7 @@ export function Onboarding({ onBack }) {
     confetti();
     toast('Votre équipe est prête');
     go('secteurs', { replace: true });
+    import('./Start.jsx').then((m) => m.maybeIntro());
     if (account.peek() && !account.peek().team) createTeamOnline().catch(() => toast('Équipe gardée sur ce téléphone. Sauvegarde en ligne dès que le réseau revient.', { error: true }));
   }
 

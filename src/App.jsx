@@ -12,6 +12,7 @@ import { SettingsScreen, FormationScreen, MoreScreen } from './screens/Settings.
 import { Login, Onboarding, WhoAmI, SaveGate } from './screens/Welcome.jsx';
 import { TeamChoice, AccountBusy, AccountFailed } from './screens/Account.jsx';
 import { AdminScreen, canAdmin } from './screens/Admin.jsx';
+import { Coach } from './screens/Start.jsx';
 import { account, accountStep, firstLoad } from './lib/account.js';
 import { authUser } from './lib/auth.js';
 import { exitDemo } from './lib/store.js';
@@ -150,6 +151,7 @@ export function App() {
       </div>
       <Capsules />
       <SheetHost />
+      <Coach />
       <Toasts />
     </>
   );

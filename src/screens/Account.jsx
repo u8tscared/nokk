@@ -267,6 +267,7 @@ export function InviteCard() {
         <Button kind="small grow" icon="share" onClick={async () => {
           const text = `Rejoins l'équipe ${t.name} sur Nokk : ${link} (code ${t.code})`;
           try {
+            import('./Start.jsx').then((m) => m.markStart('team'));
             if (navigator.share) await navigator.share({ title: 'Nokk', text, url: link });
             else { await navigator.clipboard.writeText(text); toast('Lien copié'); }
           } catch {}

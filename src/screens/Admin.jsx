@@ -86,7 +86,7 @@ function Overview({ o, onTab }) {
     <>
       <div class="kpis" data-testid="admin-kpis">
         <div class="kpi main"><div class="tiny">Calendriers distribués avec Nokk</div><div class="big-num" data-testid="admin-calendars">{n(t.calendars)}</div><div class="tiny">{formatEuro(t.amount)} collectés · {n(t.visits)} portes saisies</div></div>
-        <button class="kpi" onClick={() => onTab('comptes')}><div class="tiny muted">Comptes</div><div class="big-num" data-testid="admin-accounts">{n(t.accounts)}</div><div class="tiny muted">{n(t.active7)} actifs cette semaine</div></button>
+        <button class="kpi" onClick={() => onTab('comptes')}><div class="tiny muted">Comptes</div><div class="big-num" data-testid="admin-accounts">{n(t.accounts)}</div><div class="tiny muted">{n(t.active7)} actifs cette semaine{t.referrals ? ` · ${n(t.referrals)} parrainés` : ''}</div></button>
         <button class="kpi" onClick={() => onTab('equipes')}><div class="tiny muted">Amicales</div><div class="big-num" data-testid="admin-teams">{n(t.teams)}</div><div class="tiny muted">{pl(t.sectors, 'secteur')}</div></button>
         <div class="kpi"><div class="tiny muted">Pompiers</div><div class="big-num">{n(t.members)}</div><div class="tiny muted">dans les équipes</div></div>
         <div class="kpi"><div class="tiny muted">Tournées</div><div class="big-num">{n(t.tours)}</div><div class="tiny muted">{pl(t.doors, 'porte')} sur les cartes</div></div>
@@ -154,7 +154,7 @@ function AccountList({ accounts, at, teams, reload }) {
           <span class="grow">
             <b>{a.name || a.email || 'Sans nom'}</b>
             <span class="tiny muted" style={{ display: 'block' }}>{a.name && a.email ? a.email + ' · ' : ''}{a.teams.length ? a.teams.map((t) => t.name + (t.role === 'owner' ? ' (resp.)' : '')).join(', ') : 'sans amicale'}</span>
-            <span class="tiny muted" style={{ display: 'block' }}>Inscrit {ago(a.createdAt, at)} · vu {ago(a.seenAt, at)}</span>
+            <span class="tiny muted" style={{ display: 'block' }}>Inscrit {ago(a.createdAt, at)} · vu {ago(a.seenAt, at)}{a.invitedBy ? ' · venu par ' + a.invitedBy : ''}{a.invited ? ` · a fait venir ${a.invited} personne${a.invited > 1 ? 's' : ''}` : ''}</span>
           </span>
           <span class="right"><b>{n(a.calendars)}</b><span class="tiny muted">cal. saisis</span></span>
         </button>

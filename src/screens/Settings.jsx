@@ -12,6 +12,11 @@ import { installHelp, canInstall, promptInstall } from '../lib/install.jsx';
 import { askSwitch } from './Team.jsx';
 import { AccountCard } from './Account.jsx';
 import { AdminEntry } from './Admin.jsx';
+import { campaignSummary, closeCampaign } from '../lib/campaign.js';
+import { exportData } from '../lib/store.js';
+import { shareFile } from '../lib/share.js';
+import { formatEuro as fe } from '../lib/model.js';
+import { ShareNokkCard, SoonCard, StartCard, openIntro } from './Start.jsx';
 import { account } from '../lib/account.js';
 import { formatEuro } from '../lib/model.js';
 import { versionLabel, updateState, checkUpdate } from '../lib/update.js';
@@ -36,6 +41,8 @@ export function SettingsScreen() {
       <div class="page-head"><div><h1>Réglages</h1><div class="sub">Sur cet appareil</div></div></div>
       {!demo.value && <AdminEntry />}
       {!demo.value && <AccountCard />}
+      <ShareNokkCard />
+      <SoonCard />
       <div class="card tight list">
         <Toggle id="snd" label="Son" sub="Petits sons discrets à chaque geste" icon="sound" checked={s.sound} onChange={(v) => saveSettings({ sound: v })} />
         <Toggle id="vib" label="Vibration" sub="Android seulement, l'iPhone ne vibre pas depuis le web" icon="phone" checked={s.haptics} onChange={(v) => saveSettings({ haptics: v })} />
@@ -65,6 +72,7 @@ export function SettingsScreen() {
             <Field id="oprice" label="Don conseillé (€)"><input id="oprice" class="input" value={org.price ? org.price / 100 : ''} onChange={(e) => setOrg({ price: Math.round(parseFloat(e.currentTarget.value.replace(',', '.')) * 100) || org.price })} {...inputKinds.number} /></Field>
             <Field id="ostock" label="Calendriers"><input id="ostock" class="input" value={org.stock || ''} onChange={(e) => setOrg({ stock: parseInt(e.currentTarget.value, 10) || 0 })} {...inputKinds.int} enterKeyHint="done" /></Field>
           </div>
+          <Button kind="soft small" icon="calendar" onClick={() => openSheet(({ close }) => <CloseCampaign close={close} />, { label: 'Nouvelle campagne' })} data-testid="close-campaign">Clôturer la campagne {org.year || ''}</Button>
         </div>
       )}
       <div class="card tight list">
@@ -113,6 +121,12 @@ export function FormationScreen() {
   return (
     <div class="page rise">
       <div class="page-head"><div><h1>Formation</h1><div class="sub">2 minutes pour tout savoir</div></div></div>
+      <button class="card hrow admin-entry" onClick={() => { feel('tap'); openIntro(); }} data-testid="replay-intro">
+        <DotIcon icon="rocket" tone="info" />
+        <span class="grow"><span class="card-title">Revoir la présentation</span><span class="small muted" style={{ display: 'block' }}>Nokk en 4 écrans, puis on vous montre où toucher</span></span>
+        <Icon name="chevR" class="chev" />
+      </button>
+      <StartCard />
       {MENU.map((m) => {
         const l = LESSONS[m.route];
         const on = open === m.route;
@@ -151,6 +165,8 @@ export function MoreScreen() {
         </button>
       )}
       {!demo.value && <AdminEntry />}
+      <StartCard compact />
+      <ShareNokkCard />
       <div class="card tight list">
         {items.map((it) => (
           <button class="row" key={it.route} onClick={() => go(it.route)} data-testid={'more-' + it.route}>
@@ -176,6 +192,31 @@ function SwitchUser({ close }) {
             {m.id === d.meId && <span class="pill">Actuel</span>}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function CloseCampaign({ close }) {
+  const c = campaignSummary();
+  const [ok, setOk] = useState(false);
+  return (
+    <div class="stack" data-testid="close-campaign-sheet">
+      <div class="sheet-head"><div><div class="tiny muted">Fin de saison</div><h2>Clôturer {c.year} et préparer {c.year + 1}</h2></div></div>
+      <div class="card stack s8">
+        <div class="small"><b>{c.doors}</b> portes visitées, <b>{fe(c.amount)}</b> collectés.</div>
+        <div class="small muted">Chaque porte garde son historique : le montant, le nom et les notes rapides. L'an prochain, Nokk affichera « {c.year} : 20 € · M. Dupont » et proposera le même montant.</div>
+        <div class="small muted">Le journal, les caisses et les tournées repartent à zéro. Les secteurs et l'équipe restent.</div>
+      </div>
+      <label class="hrow small"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.currentTarget.checked)} data-testid="close-ok" /> J'ai fini les comptes de {c.year}</label>
+      <div class="sticky-action">
+        <Button kind="coral full" disabled={!ok} onClick={async () => {
+          await shareFile(`nokk-sauvegarde-${c.year}.nokk.json`, JSON.stringify(exportData()), 'application/json', `Sauvegarde Nokk ${c.year}`);
+          const y = closeCampaign();
+          feel('done');
+          toast(`Campagne ${y} prête. Sauvegarde ${c.year} téléchargée.`);
+          close();
+        }} data-testid="close-go">Sauvegarder et clôturer</Button>
       </div>
     </div>
   );

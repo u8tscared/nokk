@@ -218,7 +218,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             </div>
             <h2>{door.num} {door.street}</h2>
             <p class="small muted door-meta">
-              {lastYear ? <>L'an dernier : <b>{formatEuro(lastYear)}</b></> : <>Première visite</>}
+              {lastYear ? <>{door.lastYear.year || 'L\'an dernier'} : <b>{formatEuro(lastYear)}</b>{door.lastYear.name ? <> · {door.lastYear.name}</> : null}</> : door.lastYear?.result ? <>{door.lastYear.year || 'L\'an dernier'} : {door.lastYear.result === 'absent' ? 'absent' : door.lastYear.result === 'refus' ? 'refus' : 'déjà pris'}</> : <>Première visite</>}
               {passes.length > 0 && !isBuilding && <> · {passes.length + 1}<sup>e</sup> passage</>}
             </p>
           </div>
@@ -226,10 +226,11 @@ export function DoorSheet({ doorId: initialId, close, start }) {
         </div>
       )}
 
-      {step !== 'pick' && (door.code || door.notes) && (
+      {step !== 'pick' && (
         <div class="stop-notes nm-hide">
           {door.code && <span class="code-chip"><Icon name="key" size={16} /> {door.code}</span>}
           {door.notes && <span class="note-line"><Icon name="note" size={16} /> {door.notes}</span>}
+          <QuickTags door={door} />
         </div>
       )}
 
@@ -505,5 +506,33 @@ function EditDoor({ door, close }) {
       <Field id="enotes" label="Note (chien, horaires…)"><input id="enotes" class="input" value={notes} onInput={(e) => setNotes(e.currentTarget.value)} enterKeyHint="done" /></Field>
       <div class="sticky-action"><Button kind="full" type="submit" sound="">Enregistrer</Button></div>
     </form>
+  );
+}
+
+// Notes rapides : un toucher, gardées sur la porte pour toute l'équipe et l'an prochain.
+export const TAGS = [
+  { k: 'chien', label: 'Chien' },
+  { k: 'digicode', label: 'Digicode' },
+  { k: 'interphone', label: 'Interphone en panne' },
+  { k: 'nepas', label: 'Ne pas sonner' },
+  { k: 'soir', label: 'Plutôt le soir' },
+  { k: 'boite', label: 'Laisser un mot' },
+];
+function QuickTags({ door }) {
+  const [open, setOpen] = useState(false);
+  const tags = door.tags || [];
+  const on = TAGS.filter((t) => tags.includes(t.k));
+  const toggle = (k) => {
+    feel('tick');
+    const next = tags.includes(k) ? tags.filter((x) => x !== k) : [...tags, k];
+    updateDoor(door.id, { tags: next });
+  };
+  return (
+    <div class="quick-tags" data-testid="quick-tags">
+      {(open ? TAGS : on).map((t) => (
+        <button type="button" key={t.k} class={'qtag' + (tags.includes(t.k) ? ' on' : '') + (t.k === 'nepas' ? ' bad' : '')} aria-pressed={tags.includes(t.k) ? 'true' : 'false'} onClick={() => toggle(t.k)} data-testid={'tag-' + t.k}>{t.label}</button>
+      ))}
+      <button type="button" class="qtag add" onClick={() => { feel('tap'); setOpen(!open); }} aria-expanded={open ? 'true' : 'false'} data-testid="tags-toggle">{open ? 'OK' : on.length ? '+' : '+ Note rapide'}</button>
+    </div>
   );
 }
