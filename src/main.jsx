@@ -30,7 +30,9 @@ if (splash) setTimeout(() => splash.remove(), 1500);
 try {
   const prev = localStorage.getItem('nokk:version');
   localStorage.setItem('nokk:version', __APP_VERSION__);
-  if (prev && prev !== __APP_VERSION__) {
+  // Pas de version notée mais une app déjà installée : elle vient d'une version d'avant ce message.
+  const installed = typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller;
+  if (prev ? prev !== __APP_VERSION__ : installed) {
     setTimeout(() => import('./ui/ui.jsx').then(({ toast }) => toast('Nokk vient d\'être mis à jour ✓', { duration: 4500 })), 1700);
   }
 } catch {}
