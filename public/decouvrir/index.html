@@ -687,7 +687,7 @@
         </div>
         <div class="free-copy">
           <h2 class="h2 reveal">Gratuit toute cette saison.</h2>
-          <p class="lead reveal">Nokk se lance avec de vraies équipes. Cette saison, tout est offert : pas de carte bancaire, pas d'engagement, toutes les fonctionnalités. On vous demande seulement vos retours, et d'en parler autour de vous.</p>
+          <p class="lead reveal">Nokk se lance avec de vraies équipes. Cette saison, tout est offert : pas de carte bancaire, pas d'engagement, toutes les fonctionnalités. On vous demande seulement <a href="#avis" data-feedback>vos retours</a>, et d'en parler autour de vous.</p>
           <p class="plans-intro reveal">Ensuite, deux formules simples :</p>
           <div class="plans reveal">
             <div class="plan"><span class="plan-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><b>Formule pompier</b><span>Un pompier prend Nokk pour lui et son binôme, pour la saison.</span></div>
@@ -760,9 +760,55 @@
   <footer class="foot">
     <div class="wrap foot-inner">
       <a class="brand" href="#top"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg><span class="wordmark sm">nokk</span></a>
-      <nav><a data-app href="../">Ouvrir l'app</a><a href="#partager">Partager</a><a href="#faq">Questions</a></nav>
+      <nav><a data-app href="../">Ouvrir l'app</a><a href="#partager">Partager</a><a href="#faq">Questions</a><a href="#avis" data-feedback>Donner mon avis</a></nav>
     </div>
   </footer>
+
+  <button class="fb-fab" type="button" data-feedback aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+    <span>Donner mon avis</span>
+  </button>
+
+  <dialog class="fb" id="feedback" aria-labelledby="fb-title">
+    <form class="fb-card" id="fb-form" method="dialog" novalidate>
+      <button class="fb-x" type="button" value="close" aria-label="Fermer">×</button>
+      <div class="fb-step" data-step="form">
+        <p class="kicker">Votre avis compte</p>
+        <h2 id="fb-title">Dites-nous tout.</h2>
+        <p class="fb-sub">Nokk se construit avec les pompiers qui l'utilisent. Chaque message est lu.</p>
+        <fieldset class="fb-kinds">
+          <legend>C'est plutôt…</legend>
+          <label><input type="radio" name="kind" value="idee" checked /><span><i>💡</i>Une idée</span></label>
+          <label><input type="radio" name="kind" value="bug" /><span><i>🛠️</i>Un souci</span></label>
+          <label><input type="radio" name="kind" value="bravo" /><span><i>👏</i>Un bravo</span></label>
+        </fieldset>
+        <fieldset class="fb-stars">
+          <legend>Votre note pour Nokk <small>(facultatif)</small></legend>
+          <div class="stars" role="radiogroup">
+            <label><input type="radio" name="note" value="5" /><span aria-label="5 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="4" /><span aria-label="4 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="3" /><span aria-label="3 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="2" /><span aria-label="2 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="1" /><span aria-label="1 sur 5">★</span></label>
+          </div>
+        </fieldset>
+        <label class="fb-field"><span>Votre message</span>
+          <textarea name="message" id="fb-msg" rows="4" maxlength="2000" placeholder="Ce qui vous plaît, ce qui manque, ce qui coince sur le terrain…" required></textarea>
+        </label>
+        <label class="fb-field"><span>Votre e-mail <small>(facultatif, pour qu'on vous réponde)</small></span>
+          <input type="email" name="contact" maxlength="120" placeholder="prenom@exemple.fr" autocomplete="email" />
+        </label>
+        <p class="fb-err" id="fb-err" role="alert" hidden></p>
+        <button class="btn primary lg fb-send" type="submit" id="fb-send">Envoyer</button>
+      </div>
+      <div class="fb-step fb-done" data-step="done" hidden>
+        <span class="fb-check" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="4"/><path d="M15 27l7 7 15-16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h2>Merci !</h2>
+        <p class="fb-sub">Votre message est bien arrivé. On s'en sert pour améliorer Nokk avant la prochaine tournée.</p>
+        <button class="btn soft lg" type="button" data-close>Fermer</button>
+      </div>
+    </form>
+  </dialog>
 
   <a class="mobile-cta" data-app="demo" href="../#demo">Essayer la démo</a>
 

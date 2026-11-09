@@ -349,5 +349,51 @@
     ob.observe(el);
   })();
 
+  // ——— Avis (feedback) ———
+  (function feedback() {
+    var dlg = $('#feedback'); if (!dlg) return;
+    var API = 'https://nokk-api.marceau-ruis.workers.dev/feedback';
+    var form = $('#fb-form'), msg = $('#fb-msg'), err = $('#fb-err'), send = $('#fb-send');
+    var steps = $$('.fb-step', dlg);
+    function show(name) { steps.forEach(function (s) { s.hidden = s.dataset.step !== name; }); }
+    function open(e) {
+      if (e) e.preventDefault();
+      show('form'); err.hidden = true;
+      try { var d = JSON.parse(localStorage.getItem('nokk:landing:feedback') || '{}'); if (d.message && !msg.value) msg.value = d.message; } catch (_) {}
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+      setTimeout(function () { msg.focus(); }, 60);
+    }
+    function close() { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+    $$('[data-feedback]').forEach(function (b) { b.addEventListener('click', open); });
+    $('.fb-x', dlg).addEventListener('click', close);
+    $$('[data-close]', dlg).forEach(function (b) { b.addEventListener('click', close); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+    msg.addEventListener('input', function () { try { localStorage.setItem('nokk:landing:feedback', JSON.stringify({ message: msg.value })); } catch (_) {} });
+    if (location.hash === '#avis') open();
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(form), text = (fd.get('message') || '').trim();
+      if (!text) { msg.classList.remove('shake'); void msg.offsetWidth; msg.classList.add('shake'); msg.focus(); return; }
+      var payload = { kind: fd.get('kind') || 'idee', message: text, page: 'landing', ua: navigator.userAgent.slice(0, 200) };
+      if (fd.get('note')) payload.note = +fd.get('note');
+      var contact = (fd.get('contact') || '').trim(); if (contact) payload.contact = contact;
+      if (ref) payload.ref = ref;
+      send.disabled = true; send.textContent = 'Envoi…'; err.hidden = true;
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json().catch(function () { return {}; }); })
+        .then(function () {
+          form.reset(); try { localStorage.removeItem('nokk:landing:feedback'); } catch (_) {}
+          show('done');
+        })
+        .catch(function () {
+          err.textContent = navigator.onLine === false
+            ? 'Pas de réseau pour l\'instant. Votre message est gardé : réessayez dès que vous captez.'
+            : 'L\'envoi n\'a pas marché. Votre message est gardé, réessayez dans un instant.';
+          err.hidden = false;
+        })
+        .then(function () { send.disabled = false; send.textContent = 'Envoyer'; });
+    });
+  })();
+
   onScroll();
 })();
