@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
-import { Button, IconButton, Seg, Stepper, NumPad, toast, confetti, Bump, Field, shake } from '../ui/ui.jsx';
+import { Button, IconButton, Seg, NumPad, toast, confetti, Bump, Field, shake } from '../ui/ui.jsx';
 import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState } from '../lib/store.js';
 import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit } from '../lib/model.js';
 import { doorAfter, stats, whereNext, startGuide } from '../lib/tour.js';
@@ -262,7 +262,10 @@ export function DoorSheet({ doorId: initialId, close, start }) {
           {isBuilding ? (
             <div class="building-actions nm-hide">
               <Button kind="soft full" icon="swap" onClick={leaveBuilding} data-testid="leave-building">Changer de bâtiment</Button>
-              <button class="link-btn" onClick={closeBuilding} data-testid="close-building"><Icon name="flag" size={18} /> Immeuble fini</button>
+              <div class="building-links">
+                <button class="link-btn" onClick={closeBuilding} data-testid="close-building"><Icon name="flag" size={18} /> Immeuble fini</button>
+                <button class="link-btn" onClick={() => editDoor(door)} data-testid="edit-building"><Icon name="pencil" size={18} /> Modifier</button>
+              </div>
             </div>
           ) : (
             <div class="door-tools3 nm-hide">
@@ -399,7 +402,7 @@ function BuildingBar({ door, st, units, unit, setUnit, pop }) {
           <circle cx="24" cy="24" r={R} class="ring-fg" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - pct) }} />
         </svg>
         <div class="grow">
-          <b class="num"><Bump value={done}>{done}</Bump> / {door.flats}</b> <span class="small muted">logements faits</span>
+          <b class="num"><Bump value={done}>{done}</Bump> / </b><button type="button" class="flats-edit num" onClick={() => editFlats(door)} aria-label={`${door.flats} logements : modifier le nombre`} data-testid="edit-flats">{door.flats}<Icon name="pencil" size={14} /></button> <span class="small muted">logements faits</span>
           {(() => { const a = units.filter((v) => v.result === 'absent').length; return <div class="tiny muted">{a ? `${a} absent${a > 1 ? 's' : ''} à repasser` : 'Aucun absent pour l\'instant'}</div>; })()}
         </div>
       </div>
@@ -488,13 +491,58 @@ export function editDoor(door) {
   openSheet(({ close }) => <EditDoor door={door} close={close} />, { label: 'Modifier la porte' });
 }
 
+// Le nombre de logements vient de l'IGN et il est parfois faux : on le corrige ici, pour toute l'équipe.
+export function editFlats(door) {
+  openSheet(({ close }) => <EditFlats door={door} close={close} />, { label: 'Nombre de logements' });
+}
+
+// Champ « nombre de logements » : − / + pour ajuster, et on peut aussi taper le chiffre.
+function FlatsInput({ value, onChange, min = 2, id = 'eflats' }) {
+  const [txt, setTxt] = useState(String(value));
+  useEffect(() => { if (parseInt(txt, 10) !== value) setTxt(String(value)); }, [value]);
+  const set = (v) => { const n = Math.min(999, Math.max(min, v)); feel('tick'); onChange(n); setTxt(String(n)); };
+  return (
+    <div class="stepper flats-stepper" role="group" aria-label="Logements">
+      <IconButton type="button" icon="minus" label="Un logement de moins" onClick={() => set(value - 1)} disabled={value <= min} />
+      <input id={id} class="big-num flats-input" type="text" inputMode="numeric" pattern="[0-9]*" aria-label="Nombre de logements" value={txt}
+        onFocus={(e) => e.currentTarget.select()}
+        onInput={(e) => { const t = e.currentTarget.value.replace(/\D/g, '').slice(0, 3); setTxt(t); const n = parseInt(t, 10); if (n >= min) onChange(Math.min(999, n)); }}
+        onBlur={() => setTxt(String(value))} data-testid="flats-input" />
+      <IconButton type="button" icon="plus" label="Un logement de plus" onClick={() => set(value + 1)} disabled={value >= 999} />
+    </div>
+  );
+}
+
+function EditFlats({ door, close }) {
+  const [flats, setFlats] = useState(Math.max(2, door.flats || 2));
+  const done = doorState(door, byDoor.value.get(door.id) || []).units || 0;
+  const save = (n) => {
+    updateDoor(door.id, { flats: n, flatsSet: true });
+    feel('ok');
+    toast(n > 1 ? `${n} logements enregistrés` : 'C\'est une maison');
+    close();
+  };
+  return (
+    <form class="stack" onSubmit={(e) => { e.preventDefault(); save(flats); }}>
+      <div class="sheet-head"><h2>Combien de logements ?</h2></div>
+      <p class="small muted">{door.num} {door.street}. Comptez les boîtes aux lettres ou les sonnettes : le chiffre sera corrigé pour toute l'équipe.</p>
+      <FlatsInput value={flats} onChange={setFlats} />
+      {done > flats && <p class="tiny muted">Déjà {done} logements faits ici : l'immeuble comptera comme fini.</p>}
+      <div class="sticky-action stack">
+        <Button kind="full" type="submit" sound="" data-testid="save-flats">Enregistrer</Button>
+        <button type="button" class="link-btn center" onClick={() => save(1)}><Icon name="door" size={18} /> En fait, c'est une maison</button>
+      </div>
+    </form>
+  );
+}
+
 function EditDoor({ door, close }) {
   const [num, setNum] = useState(door.num);
   const [flats, setFlats] = useState(door.flats || 1);
   const [code, setCode] = useState(door.code || '');
   const [notes, setNotes] = useState(door.notes || '');
   return (
-    <form class="stack" onSubmit={(e) => { e.preventDefault(); updateDoor(door.id, { num: num.trim() || door.num, flats: Math.max(1, flats), code: code.trim(), notes: notes.trim() }); feel('ok'); toast('Porte mise à jour'); close(); }}>
+    <form class="stack" onSubmit={(e) => { e.preventDefault(); updateDoor(door.id, { num: num.trim() || door.num, flats: Math.max(1, flats), code: code.trim(), notes: notes.trim(), ...(flats !== door.flats ? { flatsSet: true } : {}) }); feel('ok'); toast('Porte mise à jour'); close(); }}>
       <div class="sheet-head"><h2>Modifier la porte</h2></div>
       <Field id="enum" label="Numéro"><input id="enum" class="input" value={num} onInput={(e) => setNum(e.currentTarget.value)} {...inputKinds.text} /></Field>
       <div class="field"><span class="label">C'est…</span>
@@ -503,7 +551,7 @@ function EditDoor({ door, close }) {
           <button type="button" aria-pressed={flats > 1 ? 'true' : 'false'} onClick={() => setFlats(Math.max(2, flats > 1 ? flats : 8))}><Icon name="building" size={18} /> Un immeuble</button>
         </div>
       </div>
-      {flats > 1 && <div class="field"><span class="label">Logements</span><Stepper label="Logements" value={flats} min={2} max={300} onChange={setFlats} format={(v) => <b class="big-num" style={{ fontSize: 28 }}>{v}</b>} /></div>}
+      {flats > 1 && <div class="field"><label class="label" for="eflats">Logements</label><FlatsInput value={flats} onChange={setFlats} /></div>}
       <Field id="ecode" label="Digicode"><input id="ecode" class="input" value={code} onInput={(e) => setCode(e.currentTarget.value)} {...inputKinds.text} /></Field>
       <Field id="enotes" label="Note (chien, horaires…)"><input id="enotes" class="input" value={notes} onInput={(e) => setNotes(e.currentTarget.value)} enterKeyHint="done" /></Field>
       <div class="sticky-action"><Button kind="full" type="submit" sound="">Enregistrer</Button></div>
