@@ -127,9 +127,9 @@ export function Progress({ parts, label }) {
 export function Stepper({ value, onChange, min = 0, max = 9999, step = 1, format = (v) => v, label }) {
   return (
     <div class="stepper" role="group" aria-label={label}>
-      <IconButton icon="minus" label={'Moins'} onClick={() => { onChange(Math.max(min, value - step)); }} />
+      <IconButton type="button" icon="minus" label={'Moins'} onClick={() => { onChange(Math.max(min, value - step)); }} />
       <div class="val">{format(value)}</div>
-      <IconButton icon="plus" label={'Plus'} onClick={() => { onChange(Math.min(max, value + step)); }} />
+      <IconButton type="button" icon="plus" label={'Plus'} onClick={() => { onChange(Math.min(max, value + step)); }} />
     </div>
   );
 }

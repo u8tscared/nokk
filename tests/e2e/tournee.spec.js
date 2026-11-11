@@ -190,3 +190,30 @@ test('maison : nom sur un absent, deux sonnettes, trajet vers la suivante', asyn
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('immeuble : corriger à la main le nombre de logements', async ({ page }) => {
+  const errors = await startDemo(page);
+  const id = await page.evaluate(() => {
+    const d = window.__nokk.store.data.value;
+    return d.doors.find((x) => x.sectorId === d.currentSectorId && x.flats > 1 && !d.visits.some((v) => v.doorId === x.id)).id;
+  });
+  await page.evaluate((id) => window.__nokk.openDoor(id), id);
+  await page.getByTestId('edit-flats').click();
+  const edit = page.getByRole('dialog').last();
+  await expect(edit.getByText('Combien de logements ?')).toBeVisible();
+  // On tape le bon chiffre, puis + 1.
+  await edit.getByTestId('flats-input').fill('37');
+  await edit.getByRole('button', { name: 'Un logement de plus' }).click();
+  await edit.getByTestId('save-flats').click();
+  await expect(page.getByTestId('edit-flats')).toContainText('38');
+  const d = await page.evaluate((id) => window.__nokk.store.doorById.value.get(id), id);
+  expect(d).toMatchObject({ flats: 38, flatsSet: true });
+  // Aussi depuis « Modifier » : l'immeuble devient une maison.
+  await page.getByTestId('edit-building').click();
+  const form = page.getByRole('dialog').last();
+  await form.getByRole('button', { name: 'Une maison' }).click();
+  await form.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByTestId('edit-flats')).toHaveCount(0);
+  expect(await page.evaluate((id) => window.__nokk.store.doorById.value.get(id).flats, id)).toBe(1);
+  expect(errors).toEqual([]);
+});
