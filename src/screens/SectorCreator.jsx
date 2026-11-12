@@ -125,7 +125,7 @@ export function SectorCreator({ close, photo: initialPhoto }) {
     const pos = position.value?.p;
     const center = pos || (cur?.polygon?.length ? centroid(cur.polygon) : [2.35, 46.6]);
     const map = new maplibregl.Map({
-      container: box.current, style: buildStyle(t), center, zoom: pos ? 16.2 : cur ? 15 : 5,
+      container: box.current, style: buildStyle(t, { names: true }), center, zoom: pos ? 16.2 : cur ? 15 : 5,
       attributionControl: false, pitchWithRotate: false, dragRotate: false, touchPitch: false, maxZoom: 19.5, fadeDuration: 120,
     });
     mapRef.current = map;
@@ -639,35 +639,51 @@ function AddressSearch({ map, onPick }) {
   const [q, setQ] = useState('');
   const [res, setRes] = useState([]);
   const [state, setState] = useState('idle'); // idle | busy | none | error
+  const [open, setOpen] = useState(false);
   const ctrl = useRef(null);
   const t = useRef(0);
-  useEffect(() => () => { clearTimeout(t.current); ctrl.current?.abort(); }, []);
-  function run(v) {
+  const root = useRef(null);
+  useEffect(() => {
+    // Toucher la carte referme la liste des résultats.
+    const out = (e) => { if (root.current && !root.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', out, true);
+    return () => { document.removeEventListener('pointerdown', out, true); clearTimeout(t.current); ctrl.current?.abort(); };
+  }, []);
+  function run(v, { now = false, deep = false } = {}) {
     clearTimeout(t.current);
     ctrl.current?.abort();
     if (v.trim().length < 3) { setRes([]); setState('idle'); return; }
+    setState('busy');
     t.current = setTimeout(async () => {
       const c = (ctrl.current = new AbortController());
-      setState('busy');
       try {
         const m = map.current;
         const near = m && m.getZoom() > 9 ? m.getCenter().toArray() : position.value?.p;
-        const r = await searchAddress(v, { near, signal: c.signal });
+        const r = await searchAddress(v, { near, signal: c.signal, deep });
         if (c.signal.aborted) return;
-        setRes(r); setState(r.length ? 'idle' : 'none');
-      } catch (e) { if (e?.name !== 'AbortError') { setRes([]); setState('error'); } }
-    }, 280);
+        setRes(r); setState(r.length ? 'idle' : 'none'); setOpen(true);
+        if (deep && r.length === 1) pick(r[0]);
+      } catch (e) { if (!c.signal.aborted) { setRes([]); setState('error'); setOpen(true); } }
+    }, now ? 0 : 300);
   }
-  const pick = (r) => { setRes([]); setQ(r.label + (r.sub ? ', ' + r.sub : '')); document.activeElement?.blur?.(); onPick(r); };
+  function pick(r) {
+    clearTimeout(t.current); ctrl.current?.abort();
+    setRes([]); setOpen(false); setState('idle');
+    setQ(r.label + (r.sub ? ', ' + r.sub : ''));
+    document.activeElement?.blur?.();
+    onPick(r);
+  }
+  const show = open && (res.length > 0 || state === 'none' || state === 'error');
   return (
-    <div class="addr-search">
-      <form class="addr-field" role="search" onSubmit={(e) => { e.preventDefault(); if (res[0]) pick(res[0]); }}>
-        <Icon name="search" size={20} />
-        <input {...inputKinds.search} data-testid="addr-search" placeholder="Rechercher une adresse, une rue…" aria-label="Rechercher une adresse" value={q} autoComplete="off"
-          onInput={(e) => { setQ(e.currentTarget.value); run(e.currentTarget.value); }} />
-        {q && <button type="button" class="addr-clear" aria-label="Effacer" onClick={() => { setQ(''); setRes([]); setState('idle'); }}><Icon name="x" size={16} /></button>}
+    <div class="addr-search" ref={root}>
+      <form class="addr-field" role="search" onSubmit={(e) => { e.preventDefault(); if (res[0] && state !== 'busy') pick(res[0]); else run(q, { now: true, deep: true }); }}>
+        {state === 'busy' ? <span class="addr-spin" aria-label="Recherche…" role="status" /> : <Icon name="search" size={20} />}
+        <input {...inputKinds.search} data-testid="addr-search" placeholder="Adresse, rue ou commune…" aria-label="Rechercher une adresse" value={q} autoComplete="off" enterKeyHint="search"
+          onFocus={() => setOpen(true)}
+          onInput={(e) => { setQ(e.currentTarget.value); setOpen(true); run(e.currentTarget.value); }} />
+        {q && <button type="button" class="addr-clear" aria-label="Effacer" onClick={() => { clearTimeout(t.current); ctrl.current?.abort(); setQ(''); setRes([]); setState('idle'); }}><Icon name="x" size={16} /></button>}
       </form>
-      {(res.length > 0 || state === 'none' || state === 'error') && (
+      {show && (
         <ul class="addr-results" role="listbox" data-testid="addr-results">
           {res.map((r, i) => (
             <li key={i}><button type="button" role="option" onClick={() => pick(r)}>
@@ -675,8 +691,8 @@ function AddressSearch({ map, onPick }) {
               <span><b>{r.label}</b>{r.sub && <small>{r.sub}</small>}</span>
             </button></li>
           ))}
-          {state === 'none' && <li class="addr-empty">Aucune adresse trouvée</li>}
-          {state === 'error' && <li class="addr-empty">Recherche impossible pour l'instant (réseau ?)</li>}
+          {state === 'none' && <li class="addr-empty">Aucune adresse trouvée. Ajoutez la commune, par ex. « 36 rue Hénon Lyon ».</li>}
+          {state === 'error' && <li class="addr-empty">Recherche indisponible pour l'instant. Déplacez la carte avec le doigt, ou touchez « Autour de moi ».</li>}
         </ul>
       )}
     </div>

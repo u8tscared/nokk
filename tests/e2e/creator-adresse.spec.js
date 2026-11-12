@@ -236,3 +236,34 @@ test('déplacer un point du contour, en ajouter un, et revenir ajuster après la
   await expect(page.getByTestId('draw-done')).toBeEnabled();
   await expect.poll(async () => (await verts()).length).toBe(4);
 });
+
+test('géocodeur IGN en panne : la recherche passe par OpenStreetMap et centre la carte', async ({ page }) => {
+  await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await page.route(/data\.geopf\.fr\/geocodage/, (r) => r.fulfill({ status: 504, contentType: 'application/json', body: '{"message":"The upstream server is timing out"}' }));
+  await page.route(/data\.geopf\.fr\/wfs/, (r) => r.fulfill({ contentType: 'application/json', body: '{"features":[]}' }));
+  await page.route(/photon\.komoot\.io/, (r) => r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ features: [
+    { geometry: { type: 'Point', coordinates: [4.8352, 45.7752] }, properties: { countrycode: 'FR', housenumber: '36', street: 'Rue Hénon', postcode: '69004', city: 'Lyon', type: 'house' } },
+    { geometry: { type: 'Point', coordinates: [4.8300, 45.7760] }, properties: { countrycode: 'FR', name: 'Rue Hénon', postcode: '69004', city: 'Lyon', type: 'street', osm_key: 'highway' } },
+  ] }) }));
+  await page.goto('/');
+  await page.getByTestId('no-account').click();
+  await page.getByTestId('create-team').click();
+  await page.locator('#oname1').fill('Lucas Martin');
+  await page.getByTestId('ob-next').click();
+  await page.locator('#ocity1').fill('Lyon');
+  await page.getByTestId('ob-next').click();
+  await page.getByTestId('ob-next').click();
+  await page.locator('#opartner').fill('Inès Diallo');
+  for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
+  await skipIntro(page);
+  await page.getByTestId('new-sector').click();
+  await page.waitForFunction(() => !!window.__nokkCreatorMap);
+
+  await page.getByTestId('addr-search').fill('36 rue henon');
+  const results = page.getByTestId('addr-results');
+  await expect(results.getByText('36 Rue Hénon')).toBeVisible({ timeout: 8000 });
+  await page.getByTestId('addr-search').press('Enter');
+  await expect(results).toBeHidden();
+  await expect(page.locator('.addr-pin')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => { const m = window.__nokkCreatorMap; const c = m.getCenter(); return [m.getZoom() > 17, Math.abs(c.lng - 4.8352) < 1e-4, Math.abs(c.lat - 45.7752) < 1e-4]; }), { timeout: 5000 }).toEqual([true, true, true]);
+});
