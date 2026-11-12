@@ -16,7 +16,7 @@ export function tokens() {
 
 const W = (pairs) => ['interpolate', ['exponential', 1.6], ['zoom'], ...pairs];
 
-export function buildStyle(t, { tiles = true } = {}) {
+export function buildStyle(t, { tiles = true, names = false } = {}) {
   const layers = [{ id: 'bg', type: 'background', paint: { 'background-color': t.bg } }];
   if (tiles) {
     layers.push(
@@ -30,6 +30,15 @@ export function buildStyle(t, { tiles = true } = {}) {
       { id: 'path', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]], paint: { 'line-color': t.road, 'line-width': W([15, 1, 19, 4]), 'line-dasharray': [2, 1.5] } },
       { id: 'road', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: ['!', ['in', ['get', 'class'], ['literal', ['path', 'track', 'rail', 'transit', 'ferry']]]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': t.road, 'line-width': W([12, 0.5, 14, 2, 17, 13, 19, 36]) } },
       { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'rail'], paint: { 'line-color': t.casing, 'line-width': 2, 'line-dasharray': [3, 3] } },
+    );
+    // Noms des rues et des communes, pour se repérer quand on trace un secteur.
+    if (names) layers.push(
+      { id: 'road-name', type: 'symbol', source: 'omt', 'source-layer': 'transportation_name', minzoom: 14, filter: ['has', 'name'], layout: {
+        'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': W([14, 10, 18, 14]), 'text-max-angle': 30, 'symbol-spacing': 260, 'text-padding': 2,
+      }, paint: { 'text-color': t.label || t.ink, 'text-halo-color': t.paper || '#fff', 'text-halo-width': 1.8 } },
+      { id: 'place-name', type: 'symbol', source: 'omt', 'source-layer': 'place', filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'village', 'suburb', 'quarter', 'neighbourhood', 'hamlet']]], layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12], 'text-max-width': 8, 'text-padding': 4,
+      }, paint: { 'text-color': t.ink, 'text-halo-color': t.paper || '#fff', 'text-halo-width': 2, 'text-opacity': 0.85 } },
     );
   }
   return {
