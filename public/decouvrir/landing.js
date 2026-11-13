@@ -216,7 +216,7 @@
   whenQr(function () {
     var grid = $('#a4-grid'); if (!grid) return;
     var html = '';
-    for (var k = 0; k < 20; k++) html += '<span class="cell" style="--k:' + k + '">' + qrSvg('https://u8tscared.github.io/nokk/r/S12-' + (1000 + k * 37).toString(36), { ec: 'L' }) + '</span>';
+    for (var k = 0; k < 20; k++) html += '<span class="cell" style="--k:' + k + '">' + qrSvg('https://nokkapp.fr/r/S12-' + (1000 + k * 37).toString(36), { ec: 'L' }) + '</span>';
     grid.innerHTML = html;
   });
 
