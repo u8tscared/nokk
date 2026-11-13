@@ -520,7 +520,9 @@ export function mergeBoites(reads) {
   return out.slice(0, 150);
 }
 
-const BOITES_GRACE = 1500; // après la première lecture valable, on attend l'autre modèle au plus 1,5 s
+// Mesuré le 13/11 : Mistral lit en 5 à 10 s, Llama en 30 s. La première lecture valable part tout de suite ;
+// l'autre modèle ne sert que de secours si la première échoue.
+const BOITES_GRACE = 0;
 async function readBoites(env, b) {
   const img = String(b.image || '');
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2.5 * 1024 * 1024) throw new HttpError(400, 'bad_image');
@@ -546,7 +548,7 @@ async function readBoites(env, b) {
     models.forEach((m, i) => ask(m).then((r) => { results[i] = r; }, () => {}).finally(() => {
       left--;
       if (!left) { clearTimeout(timer); resolve(); return; }
-      if (results[i]?.length && !timer) timer = setTimeout(resolve, BOITES_GRACE);
+      if (results[i]?.length && !timer) timer = BOITES_GRACE ? setTimeout(resolve, BOITES_GRACE) : (resolve(), 1);
     }));
   });
   const boites = mergeBoites(results);
