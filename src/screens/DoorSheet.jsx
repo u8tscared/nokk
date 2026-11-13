@@ -76,6 +76,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const [popUnit, setPopUnit] = useState(null);
   const [naming, setNaming] = useState(false); // le clavier est ouvert sur le nom : on ne garde que l'essentiel
   const [leaving, setLeaving] = useState(null); // immeuble qu'on vient de quitter (pour le titre du choix)
+  const [prev, setPrev] = useState(null); // dernière saisie, pour revenir la corriger
   const [sel, setSel] = useState(null); // habitant choisi dans la liste des boîtes (null = nouveau logement)
   const [floor, setFloor] = useState(null); // étage du logement en cours
   const [floorOpen, setFloorOpen] = useState(false);
@@ -219,6 +220,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     const label = result === 'absent' ? (card ? `Absent · laissez la carte n° ${card}` : 'Absent · on repassera') : result === 'refus' ? 'Refus noté · on ne repassera pas' : 'Déjà pris noté';
     const again = result === 'absent' && t.rid ? rstates.find((s) => s.r.id === t.rid)?.absences || 0 : 0;
     toast((u ? u + ' · ' : '') + label + (again ? ` (${again + 1}e fois)` : ''), { undo: () => { removeVisit(v.id); setMotion('back'); setDoorId(doorId); setStep('ask'); if (u && !t.rid) setUnit(u); if (t.rid) { const s = residentStates(data.value.doors.find((d) => d.id === doorId), byDoor.value.get(doorId) || []).find((x) => x.r.id === t.rid); if (s) pickResident(s); } } });
+    setPrev({ id: v.id, doorId, label: (isBuilding ? (u || 'Logement') : door.num + ' ' + door.street) + ' · ' + RESULTS[result].short.toLowerCase() });
     after(u, t.rid);
   }
 
@@ -236,6 +238,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     });
     feel('ok');
     stamp('ok');
+    setPrev({ id: v.id, doorId, label: (isBuilding ? (u || 'Logement') : door.num + ' ' + door.street) + ' · ' + (amount ? formatEuro(amount) : 'offert') });
     toast(`${amount ? formatEuro(amount) + ' enregistrés' : 'Calendrier offert'}${amount && method !== 'especes' ? ' · ' + METHODS[method].label.toLowerCase() : ''}`, { action: { label: 'Modifier', run: () => openVisitEdit(v) } });
     after(u, t.rid);
   }
@@ -335,6 +338,11 @@ export function DoorSheet({ doorId: initialId, close, start }) {
 
       {step === 'ask' && (
         <div class={'stage anim-' + motion} key={'ask' + doorId + units.length}>
+          {prev && !naming && data.value.visits.some((x) => x.id === prev.id) && (
+            <button type="button" class="prev-bar" onClick={() => { feel('tap'); const v = data.value.visits.find((x) => x.id === prev.id); if (prev.doorId !== doorId) { const d = data.value.doors.find((x) => x.id === prev.doorId); if (d) { setMotion('back'); setDoorId(d.id); setStep('ask'); flyTo(d.p); } } openVisitEdit(v); }} data-testid="prev-fix">
+              <Icon name="chevL" size={18} /><span class="grow">Revenir au précédent : <b>{prev.label}</b></span><span class="tiny">Corriger</span>
+            </button>
+          )}
           {!isBuilding && list.length > 0 && !naming && <History list={list} st={st} />}
           {listMode || sel ? (
             <ResidentNow s={selState} floor={floor} setFloor={(f) => { setFloor(f); setFloorOpen(false); }} floorOpen={floorOpen} setFloorOpen={setFloorOpen} name={name} setName={setName} nameProps={nameProps} />

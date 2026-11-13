@@ -475,21 +475,23 @@ const BOITES_PROMPT = `Photo des boîtes aux lettres (ou de l'interphone) d'un i
 Lis CHAQUE étiquette de nom, de gauche à droite puis de haut en bas, exactement comme elle est écrite. N'invente aucun nom ; ignore les étiquettes vides, illisibles, les publicités et les mots comme « Stop pub » ou « La Poste ».
 Pour chaque boîte, donne aussi l'étage s'il est écrit (RDC, 1er, 2e, « 3e étage », « Ét. 4 »…) et le numéro de porte ou d'appartement s'il est écrit (ex. « Apt 12 », « B4 », « 2G »). Sinon mets null. Ne devine pas l'étage d'après la position de la boîte.
 Réponds UNIQUEMENT avec ce JSON compact, sans texte autour :
-{"boites":[{"nom":"nom tel qu'écrit","etage":"étage écrit ou null","porte":"numéro écrit ou null"}]}`;
+{"b":[{"n":"nom tel qu'écrit","e":"étage écrit ou null","p":"numéro écrit ou null"}]}
+Exemple : {"b":[{"n":"DUPONT J.","e":"RDC","p":null},{"n":"MARTIN","e":null,"p":"12"}]}`;
 
 const BAD_NAME = /^(null|undefined|vide|illisible|inconnu|stop ?pub|pas de pub|la poste|courrier|publicit[eé]s?|syndic|gardien|concierge)$/i;
 export function parseBoites(text) {
   const m = String(text || '').match(/\{[\s\S]*\}/);
   let j = null;
   if (m) { try { j = JSON.parse(m[0]); } catch { j = null; } }
-  if (!j) { const a = String(text || '').match(/\[[\s\S]*\]/); if (a) { try { j = { boites: JSON.parse(a[0]) }; } catch { return null; } } }
+  if (!j) { const a = String(text || '').match(/\[[\s\S]*\]/); if (a) { try { j = { b: JSON.parse(a[0]) }; } catch { return null; } } }
   if (!j) return null;
-  const raw = Array.isArray(j.boites) ? j.boites : Array.isArray(j.noms) ? j.noms : [];
+  const raw = Array.isArray(j.b) ? j.b : Array.isArray(j.boites) ? j.boites : Array.isArray(j.noms) ? j.noms : [];
   const out = [];
   for (const x of raw.slice(0, 150)) {
-    const nom = cleanStr(typeof x === 'string' ? x : x?.nom || x?.name);
+    const nom = cleanStr(typeof x === 'string' ? x : x?.n || x?.nom || x?.name);
     if (!nom || nom.length < 2 || BAD_NAME.test(nom)) continue;
-    out.push({ nom, etage: cleanStr(x?.etage == null ? null : String(x.etage)), porte: cleanStr(x?.porte == null ? null : String(x.porte)) });
+    const e = x?.e ?? x?.etage, p = x?.p ?? x?.porte;
+    out.push({ nom, etage: cleanStr(e == null ? null : String(e)), porte: cleanStr(p == null ? null : String(p)) });
   }
   return out;
 }
@@ -518,22 +520,40 @@ export function mergeBoites(reads) {
   return out.slice(0, 150);
 }
 
+// Mesuré le 13/11 : Mistral lit en 5 à 10 s, Llama en 30 s. La première lecture valable part tout de suite ;
+// l'autre modèle ne sert que de secours si la première échoue.
+const BOITES_GRACE = 0;
 async function readBoites(env, b) {
   const img = String(b.image || '');
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2.5 * 1024 * 1024) throw new HttpError(400, 'bad_image');
   if (!env.AI) throw new HttpError(503, 'no_ai');
+  const models = Array.isArray(b.models) ? PLAN_MODELS.filter((m) => b.models.includes(m)) : PLAN_MODELS;
+  const t0 = Date.now();
+  const t = {};
   const ask = async (model) => {
     const r = await env.AI.run(model, {
       messages: [{ role: 'user', content: [{ type: 'text', text: BOITES_PROMPT }, { type: 'image_url', image_url: { url: img } }] }],
-      max_tokens: 2500, temperature: 0.05,
+      max_tokens: 1500, temperature: 0.05,
     });
     const text = r?.response ?? r?.choices?.[0]?.message?.content ?? '';
-    return parseBoites(typeof text === 'string' ? text : JSON.stringify(text));
+    const out = parseBoites(typeof text === 'string' ? text : JSON.stringify(text));
+    t[model.split('/').pop()] = Date.now() - t0;
+    return out;
   };
-  const res = await Promise.allSettled(PLAN_MODELS.map(ask));
-  const boites = mergeBoites(res.map((x) => (x.status === 'fulfilled' ? x.value : null)));
+  // Course : la première lecture valable part tout de suite, l'autre la complète si elle arrive juste après.
+  const results = models.map(() => null);
+  await new Promise((resolve) => {
+    let left = models.length;
+    let timer = 0;
+    models.forEach((m, i) => ask(m).then((r) => { results[i] = r; }, () => {}).finally(() => {
+      left--;
+      if (!left) { clearTimeout(timer); resolve(); return; }
+      if (results[i]?.length && !timer) timer = BOITES_GRACE ? setTimeout(resolve, BOITES_GRACE) : (resolve(), 1);
+    }));
+  });
+  const boites = mergeBoites(results);
   if (!boites.length) throw new HttpError(422, 'unreadable');
-  return { boites };
+  return { boites, t };
 }
 
 export default {
