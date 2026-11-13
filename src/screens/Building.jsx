@@ -182,7 +182,7 @@ function ResidentsEditor({ doorId, file, close }) {
   async function read(f) {
     setBusy(true); setErr('');
     try {
-      const img = await shrink(f, 1800);
+      const img = await shrink(f, 1400, 0.72);
       const got = demo.value && !window.__nokkApi ? demoRead() : await readMailboxPhoto(img);
       const cur = rowsRef.current;
       const { list, added, updated } = mergeResidents(cur, got);

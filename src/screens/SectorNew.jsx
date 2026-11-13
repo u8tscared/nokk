@@ -146,7 +146,7 @@ export function openImportList() {
   openSheet(({ close }) => <ImportList close={close} />, { label: 'Importer une liste' });
 }
 
-export async function shrink(file, max = 1400) {
+export async function shrink(file, max = 1400, quality = 0.78) {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
@@ -155,7 +155,7 @@ export async function shrink(file, max = 1400) {
     c.width = Math.round(img.width * k);
     c.height = Math.round(img.height * k);
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL('image/jpeg', 0.78);
+    return c.toDataURL('image/jpeg', quality);
   } finally {
     URL.revokeObjectURL(url);
   }
