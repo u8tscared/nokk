@@ -6,6 +6,8 @@ L’app des tournées de calendriers des sapeurs-pompiers. Une app web installab
 
 **Présentation (landing) :** https://nokkapp.fr/decouvrir/ (fichiers statiques dans `public/decouvrir/`)
 
+**Mise en ligne :** Cloudflare (Worker `nokk`, fichiers statiques de `dist/`) reconstruit et publie le site à chaque push sur `main`. Les tests GitHub se lancent à la main (Actions > Tests > Run workflow).
+
 Sur iPhone : Safari → Partager → « Sur l’écran d’accueil ». Sur Android : Chrome → « Installer l’application ».
 
 ## Essayer en 1 minute
