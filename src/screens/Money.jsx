@@ -12,6 +12,7 @@ import { inputKinds } from '../lib/keyboard.js';
 const euro = (c) => formatEuro(c);
 
 import { ToursCard } from './Tour.jsx';
+import { openVisitEdit } from './VisitEdit.jsx';
 import { SoonCard } from './Start.jsx';
 import { startDemo, demoMode } from '../lib/demoMode.js';
 
@@ -308,7 +309,7 @@ export function JournalScreen() {
                 const door = doors.get(v.doorId);
                 const r = RESULTS[v.result];
                 return (
-                  <button class="row" key={v.id} onClick={() => openSheet(({ close }) => <EditVisit v={v} close={close} />, { label: 'Modifier le passage' })}>
+                  <button class="row" key={v.id} onClick={() => openVisitEdit(v)}>
                     <span class={'hdot st-' + v.result} />
                     <span class="grow"><span class="t">{door ? `${door.num} ${door.street}` : 'Porte supprimée'}{v.unit && !v.closed ? ' · ' + v.unit : ''}</span><span class="s">{new Date(v.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {v.closed ? 'Immeuble terminé' : r?.short}{v.name ? ' · ' + v.name : ''}{v.method && v.result === 'donne' ? ' · ' + METHODS[v.method].label : ''}</span></span>
                     <span class="end">{v.result === 'donne' ? euro(v.amount) : ''}</span>
@@ -321,38 +322,6 @@ export function JournalScreen() {
       )}
       {list.length > limit && <Button kind="ghost" onClick={() => setLimit(limit + 200)}>Voir plus</Button>}
     </div>
-  );
-}
-
-function EditVisit({ v, close }) {
-  const [amount, setAmount] = useState(((v.amount || 0) / 100).toFixed(2).replace('.', ','));
-  const [method, setMethod] = useState(v.method || 'especes');
-  const [result, setResult] = useState(v.result);
-  const [name, setName] = useState(v.name || '');
-  const door = data.value.doors.find((x) => x.id === v.doorId);
-  return (
-    <form class="stack" onSubmit={(e) => {
-      e.preventDefault();
-      const c = Math.round(parseFloat(amount.replace(',', '.')) * 100) || 0;
-      updateVisit(v.id, { result, amount: result === 'donne' ? c : undefined, method: result === 'donne' ? method : undefined, name: name.trim() || undefined });
-      feel('ok');
-      toast('Passage corrigé');
-      close();
-    }}>
-      <div class="sheet-head"><h2>{door ? `${door.num} ${door.street}` : 'Passage'}</h2></div>
-      <Seg label="Résultat" value={result} onChange={setResult} options={Object.entries(RESULTS).map(([k, r]) => ({ value: k, label: r.short }))} />
-      {result === 'donne' && (
-        <>
-          <Field id="eamount" label="Montant (€)"><input id="eamount" class="input" value={amount} onInput={(e) => setAmount(e.currentTarget.value)} {...inputKinds.number} /></Field>
-          <Seg label="Paiement" value={method} onChange={setMethod} options={[{ value: 'especes', label: 'Espèces' }, { value: 'carte', label: 'Carte' }, { value: 'cheque', label: 'Chèque' }]} />
-        </>
-      )}
-      <Field id="ename" label="Nom"><input id="ename" class="input" value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} enterKeyHint="done" /></Field>
-      <div class="sticky-action">
-        <Button kind="danger" type="button" icon="trash" onClick={() => { const snap = v; removeVisit(v.id); close(); toast('Passage supprimé', { undo: () => setData((x) => ({ ...x, visits: [...x.visits, snap].sort((a, b) => a.ts - b.ts) })) }); }}>Supprimer</Button>
-        <Button kind="grow" type="submit" sound="" class="grow">Enregistrer</Button>
-      </div>
-    </form>
   );
 }
 

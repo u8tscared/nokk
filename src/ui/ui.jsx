@@ -148,13 +148,13 @@ export function NumPad({ onKey }) {
 // ——— Toasts ———
 export const toasts = signal([]);
 let tid = 0;
-export function toast(text, { undo, error, duration } = {}) {
+export function toast(text, { undo, action, error, duration } = {}) {
   const id = ++tid;
-  const t = { id, text, undo, error, out: false };
+  const t = { id, text, undo, action, error, out: false };
   toasts.value = [...toasts.value.filter((x) => !x.out).slice(-1).map((x) => ({ ...x, out: true })), t];
   setTimeout(() => { toasts.value = toasts.value.filter((x) => x.id === id || !x.out); }, 260);
   if (error) feel('err');
-  const ms = duration || (error ? 3800 : undo ? 4200 : 2300);
+  const ms = duration || (error ? 3800 : undo || action ? 4600 : 2300);
   setTimeout(() => dismissToast(id), ms);
   return id;
 }
@@ -171,6 +171,9 @@ export function Toasts() {
             <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
           )}
           <span>{t.text}</span>
+          {t.action && (
+            <button onClick={() => { t.action.run(); feel('tap'); dismissToast(t.id); }} data-testid="toast-action">{t.action.label}</button>
+          )}
           {t.undo && (
             <button onClick={() => { t.undo(); feel('close'); dismissToast(t.id); }}>Annuler</button>
           )}

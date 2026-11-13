@@ -177,8 +177,8 @@ textarea.input { padding: 14px 16px; min-height: 96px; resize: vertical; }
 .tone-muted { --c: var(--muted); --t: var(--well); }
 .tone-coral { --c: var(--accent-2-ink); --t: var(--accent-2-tint); }
 
+.pill:not([class*='tone-']) { --c: var(--accent-ink); --t: var(--tint); }
 .pill {
-  --c: var(--accent-ink); --t: var(--tint);
   display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 99px;
   background: var(--t); color: var(--c); font-size: 12px; font-weight: 700; white-space: nowrap;
 }

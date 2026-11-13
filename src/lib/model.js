@@ -49,24 +49,29 @@ export function doorState(door, list = []) {
   if (!list.length) return { state: 'todo', passes: 0, amount: 0 };
   const amount = list.reduce((s, v) => s + (v.result === 'donne' ? v.amount || 0 : 0), 0);
   if (door.flats > 1) {
-    const units = new Map();
-    for (const v of list) units.set(v.unit || '_' + v.id, v);
-    const done = [...units.values()].filter((v) => v.result !== 'absent').length;
-    if (list.some((v) => v.closed) || done >= door.flats) return { state: 'donne', passes: list.length, amount, units: done, closed: true };
-    return { state: 'partiel', passes: list.length, amount, units: done };
+    const us = unitsOf(list);
+    const done = us.filter((v) => v.result !== 'absent').length;
+    const absents = us.length - done;
+    const total = flatsOf(door);
+    if (list.some((v) => v.closed) || done >= total) return { state: 'donne', passes: list.length, amount, units: done, absents, closed: true };
+    return { state: 'partiel', passes: list.length, amount, units: done, absents };
   }
   const last = list[list.length - 1];
   const passes = list.filter((v) => v.result === 'absent').length;
   return { state: last.result, passes, amount, last };
 }
 
+// Nombre de logements : celui de la porte, ou plus si l'on a noté plus d'habitants.
+export const flatsOf = (door) => Math.max(door?.flats || 1, door?.residents?.length || 0);
+
 export const isDone = (s) => s === 'donne' || s === 'refus' || s === 'deja';
 
 export function sectorStats(doors, byDoor) {
-  const out = { total: doors.length, done: 0, donne: 0, absent: 0, refus: 0, deja: 0, todo: 0, partiel: 0, amount: 0 };
+  const out = { total: doors.length, done: 0, donne: 0, absent: 0, refus: 0, deja: 0, todo: 0, partiel: 0, amount: 0, repasse: 0 };
   for (const d of doors) {
     const st = doorState(d, byDoor.get(d.id));
     out[st.state] = (out[st.state] || 0) + 1;
+    if (st.state === 'absent' || st.absents > 0) out.repasse++;
     if (isDone(st.state)) out.done++;
     out.amount += st.amount;
   }
@@ -159,7 +164,7 @@ export function uid(prefix = '') {
 // Logements d'un immeuble : dernière visite par logement (sans la ligne « immeuble terminé »).
 export function unitsOf(list = []) {
   const m = new Map();
-  for (const v of list) if (!v.closed) m.set(v.unit || '_' + v.id, v);
+  for (const v of list) if (!v.closed) m.set(v.rid || v.unit || '_' + v.id, v);
   return [...m.values()];
 }
 

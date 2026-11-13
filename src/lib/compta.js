@@ -73,15 +73,17 @@ export function csv(d) {
     const s = x == null ? '' : String(x);
     return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
-  const head = ['Date', 'Heure', 'Secteur', 'Numéro', 'Rue', 'Logement', 'Résultat', 'Montant (€)', 'Paiement', 'Calendriers', 'Nom', 'N° chèque', 'Équipe', 'Note'];
+  const head = ['Date', 'Heure', 'Secteur', 'Numéro', 'Rue', 'Étage', 'Logement', 'Résultat', 'Montant (€)', 'Paiement', 'Calendriers', 'Nom', 'N° chèque', 'Équipe', 'Note'];
   const R = { donne: 'Donné', absent: 'Absent', refus: 'Refus', deja: 'Déjà pris' };
   const M = { especes: 'Espèces', carte: 'Carte', cheque: 'Chèque' };
   const rows = [...d.visits].sort((a, b) => a.ts - b.ts).map((v) => {
     const dt = new Date(v.ts);
     const door = doors.get(v.doorId);
+    const r = v.rid ? door?.residents?.find((x) => x.id === v.rid) : null;
+    const f = r ? r.floor : null;
     return [
       dt.toLocaleDateString('fr-FR'), dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      sectors.get(v.sectorId)?.name, door?.num, door?.street, v.unit, R[v.result],
+      sectors.get(v.sectorId)?.name, door?.num, door?.street, f == null ? '' : f === 0 ? 'RDC' : f < 0 ? 'Sous-sol' : f, v.unit, R[v.result],
       v.result === 'donne' ? ((v.amount || 0) / 100).toFixed(2).replace('.', ',') : '', v.result === 'donne' ? M[v.method] : '',
       v.result === 'donne' ? v.calendars ?? 1 : '', v.name, v.chequeNo,
       (v.by || []).map((id) => members.get(id)?.name).filter(Boolean).join(' & '), v.note,
