@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nokk a déménagé</title>
+<script>
+// Nokk est maintenant sur https://nokkapp.fr : on garde le chemin, les paramètres et le #.
+(function () {
+  var p = location.pathname.replace(/^\/nokk/, '') || '/';
+  var to = 'https://nokkapp.fr' + p + location.search + location.hash;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+  if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+  location.replace(to);
+})();
+</script>
+<style>body{font-family:system-ui,sans-serif;background:#eef2f0;color:#1d2b28;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;text-align:center}a{color:#367a6d;font-weight:600}</style>
+</head><body><p>Nokk a déménagé sur <a href="https://nokkapp.fr/">nokkapp.fr</a>.<br>Pense à réinstaller l'app depuis cette nouvelle adresse.</p></body></html>
