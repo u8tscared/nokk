@@ -89,6 +89,17 @@ function Summary({ wide }) {
           <div class="tiny muted">portes</div>
         </div>
       </div>
+      {(s.repasse > 0 || repasserMode.value) && (
+        <div class="mode-switch" role="group" aria-label="Mode" data-testid="mode-switch">
+          <button type="button" aria-pressed={!repasserMode.value ? 'true' : 'false'} onClick={() => { feel('tick'); repasserMode.value = false; }} data-testid="mode-tournee">
+            <Icon name="route" size={18} /> Tournée<small>{s.todo + (s.partiel || 0)} à faire</small>
+          </button>
+          <button type="button" class="rep" aria-pressed={repasserMode.value ? 'true' : 'false'} onClick={() => { feel('tick'); repasserMode.value = true; }} data-testid="mode-repasse">
+            <Icon name="repeat" size={18} /> Repasses<small>{s.repasse} avec absents</small>
+          </button>
+        </div>
+      )}
+      {repasserMode.value && <p class="tiny repasse-hint" data-testid="repasse-hint">Mode repasse : Nokk ne vous emmène que chez les absents, maison par maison et, dans les immeubles, nom par nom. Un nouvel absent compte une fois de plus.</p>}
       <Progress parts={parts} label={`${s.done} portes faites sur ${s.total}`} />
       <div class="legend">
         <span><i style={{ background: 'var(--st-done)' }} />Donné {s.donne}</span>
@@ -104,7 +115,9 @@ function Summary({ wide }) {
           </span>
           <Icon name="arrowR" />
         </button>
-      ) : s.repasse > 0 && !repasserMode.value ? (
+      ) : repasserMode.value ? (
+        <Button kind="soft full" icon="check" onClick={() => { repasserMode.value = false; }} data-testid="repasse-done">Plus personne à revoir · retour à la tournée</Button>
+      ) : s.repasse > 0 ? (
         <Button kind="ink full" icon="repeat" onClick={() => { repasserMode.value = true; }}>Repasser chez les absents · {s.repasse}</Button>
       ) : sector ? (
         <Button kind="ink full" icon="sectors" onClick={() => openSheet(({ close }) => <SectorPicker close={close} />, { label: 'Changer de secteur' })}>Secteur terminé · en choisir un autre</Button>
