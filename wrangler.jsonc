@@ -1,0 +1,7 @@
+// Site Nokk (https://nokkapp.fr) : fichiers statiques du build Vite, servis par Cloudflare.
+// Mis en ligne par Cloudflare Workers Builds à chaque push sur main (build : npm run build, déploiement : npx wrangler deploy).
+{
+  "name": "nokk",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./dist" }
+}
