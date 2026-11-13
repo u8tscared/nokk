@@ -5,7 +5,7 @@ import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState, ad
 import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit, flatsOf } from '../lib/model.js';
 import { doorAfter, stats, whereNext, startGuide, repasserMode } from '../lib/tour.js';
 import { residentStates, nextResident, makeResident, floorShort, residentLabel, passCount } from '../lib/residents.js';
-import { BuildingHead, ResidentsPanel, MailboxCta, FloorPicker } from './Building.jsx';
+import { BuildingHead, ResidentsPanel, MailboxCta, FloorPicker, PhotoFirst, openResidents } from './Building.jsx';
 import { openVisitEdit } from './VisitEdit.jsx';
 import { formatDistance } from '../lib/geo.js';
 import { flyTo } from '../ui/MapView.jsx';
@@ -42,9 +42,14 @@ function stamp(kind = 'ok') {
   setTimeout(() => s.remove(), 700);
 }
 
+// Immeubles où l'on a choisi « Continuer sans photo » : on ne redemande pas pendant la tournée.
+const noPhoto = new Set();
+// En arrivant dans un immeuble sans liste de boîtes, on propose d'abord la photo.
+const entryStep = (d) => (d && d.flats > 1 && !d.residentsSet && !noPhoto.has(d.id) ? 'photo' : 'ask');
+
 export function DoorSheet({ doorId: initialId, close, start }) {
   const [doorId, setDoorId] = useState(initialId);
-  const [step, setStep] = useState(start || 'ask'); // ask | give | pick
+  const [step, setStep] = useState(() => start || entryStep(data.value.doors.find((d) => d.id === initialId))); // photo | ask | give | pick
   const [motion, setMotion] = useState('in'); // sens de l'animation : in | fwd | back | next
   const door = data.value.doors.find((d) => d.id === doorId);
   const list = byDoor.value.get(doorId) || [];
@@ -147,6 +152,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     const cur = sel && rs.find((r) => r.id === sel);
     if (cur) { setName(cur.name || ''); setFloor(cur.floor ?? null); return; }
     if (sel || (!name.trim() && door.residentsSet)) pickResident(firstResident(door, list), door, list);
+    if (door.residentsSet && step === 'photo') { setMotion('fwd'); setStep('ask'); }
   }, [door?.residents]);
 
   if (!door) return <div class="empty"><p>Cette porte n'existe plus.</p></div>;
@@ -161,7 +167,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     setLeaving(null);
     setMotion(how);
     setDoorId(d.id);
-    setStep('ask');
+    setStep(entryStep(d));
     flyTo(d.p);
   }
 
@@ -310,11 +316,22 @@ export function DoorSheet({ doorId: initialId, close, start }) {
         </div>
       )}
 
-      {step !== 'pick' && isBuilding && !naming && (listMode ? (
+      {step !== 'pick' && step !== 'photo' && isBuilding && !naming && (listMode ? (
         step === 'ask' && <BuildingHead door={door} list={list} states={rstates} />
       ) : (
         <BuildingBar door={door} st={st} units={units} unit={unit} setUnit={setUnit} pop={popUnit} floor={floor} setFloor={setFloor} picked={!!sel} />
       ))}
+
+      {step === 'photo' && (
+        <div class={'stage anim-' + motion} key={'photo' + doorId}>
+          <PhotoFirst door={door} list={list}
+            onSkip={() => { feel('tap'); noPhoto.add(door.id); go('ask'); }}
+            onManual={() => { noPhoto.add(door.id); openResidents(door); }} />
+          <div class="building-actions">
+            <Button kind="soft full" icon="swap" onClick={leaveBuilding}>Changer de bâtiment</Button>
+          </div>
+        </div>
+      )}
 
       {step === 'ask' && (
         <div class={'stage anim-' + motion} key={'ask' + doorId + units.length}>
@@ -517,7 +534,7 @@ function ResidentNow({ s, floor, setFloor, floorOpen, setFloorOpen, name, setNam
   return (
     <div class="res-now" data-testid="res-now">
       <div class="res-now-row">
-        <button type="button" class={'floor-badge big' + (floor == null ? ' unk' : '')} onClick={() => { feel('tick'); setFloorOpen(!floorOpen); }} aria-label={'Étage : ' + floorShort(floor) + ', toucher pour changer'} aria-expanded={floorOpen ? 'true' : 'false'} data-testid="now-floor">{floorShort(floor)}</button>
+        <button type="button" class={'floor-badge big' + (floor == null ? ' unk' : '')} onClick={() => { feel('tick'); setFloorOpen(!floorOpen); }} aria-label={'Étage : ' + floorShort(floor) + ', toucher pour changer'} aria-expanded={floorOpen ? 'true' : 'false'} data-testid="now-floor"><span class="fb-v">{floorShort(floor)}</span><span class="fb-edit"><Icon name="pencil" size={11} /> modifier</span></button>
         <input id="aname" class="input" placeholder={s ? 'Nom' : 'Nom du nouveau logement'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint="done" data-testid="ask-name" />
       </div>
       {floorOpen && <FloorPicker value={floor} onChange={setFloor} />}

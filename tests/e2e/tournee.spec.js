@@ -148,6 +148,8 @@ test('immeuble : les logements à la suite, puis changer de bâtiment', async ({
   });
   await page.evaluate((id) => window.__nokk.openDoor(id), id);
   const sheet = page.getByRole('dialog');
+  // En arrivant dans l'immeuble, Nokk propose la photo des boîtes : on continue sans.
+  await sheet.getByTestId('pf-skip').click();
   await expect(sheet.locator('#unit')).toHaveValue('1');
   await sheet.getByRole('button', { name: 'Absent' }).click();
   // On reste dans l'immeuble, logement suivant proposé.
@@ -198,6 +200,7 @@ test('immeuble : corriger à la main le nombre de logements', async ({ page }) =
     return d.doors.find((x) => x.sectorId === d.currentSectorId && x.flats > 1 && !d.visits.some((v) => v.doorId === x.id)).id;
   });
   await page.evaluate((id) => window.__nokk.openDoor(id), id);
+  await page.getByTestId('pf-skip').click();
   await page.getByTestId('edit-flats').click();
   const edit = page.getByRole('dialog').last();
   await expect(edit.getByText('Combien de logements ?')).toBeVisible();

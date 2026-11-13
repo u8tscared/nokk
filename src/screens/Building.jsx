@@ -128,6 +128,23 @@ export function MailboxCta({ door }) {
   );
 }
 
+// Arrivée dans un immeuble : la photo des boîtes d'abord, ou on continue sans.
+export function PhotoFirst({ door, list, onSkip, onManual }) {
+  const started = list.some((v) => !v.closed);
+  return (
+    <div class="photo-first" data-testid="photo-first">
+      <div class="pf-art" aria-hidden="true">
+        {[0, 1, 2, 3, 4, 5].map((i) => <span key={i}><i /></span>)}
+      </div>
+      <h3>Photographiez les boîtes aux lettres</h3>
+      <p class="small muted">Nokk lit les noms et les étages. Ensuite, il vous guide nom par nom, et aux repasses il vous dit qui reste, étage par étage. Tout se corrige à la main.</p>
+      <PhotoButton onFile={(f) => openResidents(door, { file: f })} label="Prendre la photo" kind="coral full big" testid="pf-photo" />
+      <button type="button" class="btn soft full" onClick={onSkip} data-testid="pf-skip">Continuer sans photo</button>
+      <button type="button" class="link-btn center" onClick={onManual} data-testid="pf-manual"><Icon name="pencil" size={18} /> Saisir les noms à la main</button>
+    </div>
+  );
+}
+
 let photoSeq = 0;
 function PhotoButton({ onFile, label, kind = 'small', testid }) {
   const [id] = useState(() => 'mbphoto' + ++photoSeq);

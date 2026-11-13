@@ -653,3 +653,20 @@ label.btn { cursor: pointer; }
 .amount-edit .input { font-family: var(--d); font-size: 26px; font-weight: 750; padding-right: 36px; }
 .amount-edit-eur { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-family: var(--d); font-size: 22px; font-weight: 750; color: var(--muted); }
 @media (max-width: 360px) { .res-row { grid-template-columns: 70px 1fr 52px 36px; } }
+
+/* Arrivée dans un immeuble : la photo d'abord */
+.photo-first { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 20px; background: var(--tint); text-align: center; }
+.photo-first h3 { margin: 4px 0 0; font-family: var(--d); font-size: 21px; }
+.photo-first p { margin: 0 0 4px; }
+.photo-first .btn { justify-content: center; }
+.photo-first .btn.big { min-height: 58px; font-size: 18px; }
+.pf-art { display: grid; grid-template-columns: repeat(3, 44px); gap: 5px; justify-content: center; padding: 8px; margin: 0 auto; border-radius: 10px; background: var(--ink-2); }
+.pf-art span { position: relative; height: 30px; border-radius: 4px; background: var(--paper); }
+.pf-art span::before { content: ''; position: absolute; left: 7px; right: 7px; top: 5px; height: 3px; border-radius: 2px; background: var(--ink-2); }
+.pf-art i { position: absolute; left: 8px; right: 8px; bottom: 6px; height: 7px; border-radius: 2px; background: var(--rim); animation: pfscan 2.4s var(--ease) infinite; }
+.pf-art span:nth-child(2) i { animation-delay: .15s } .pf-art span:nth-child(3) i { animation-delay: .3s } .pf-art span:nth-child(4) i { animation-delay: .45s } .pf-art span:nth-child(5) i { animation-delay: .6s } .pf-art span:nth-child(6) i { animation-delay: .75s }
+@keyframes pfscan { 0%, 60%, 100% { background: var(--rim); } 30% { background: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .pf-art i { animation: none; } }
+.floor-badge.big { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 70px; height: 52px; }
+.floor-badge.big .fb-v { line-height: 1; }
+.floor-badge.big .fb-edit { display: inline-flex; align-items: center; gap: 2px; font-family: var(--f); font-size: 10.5px; font-weight: 750; opacity: 0.85; }
