@@ -34,8 +34,9 @@ export const route = computed(() => {
   const states = doorStates.value;
   const mode = repasserMode.value;
   const todo = sectorDoors.value.filter((d) => {
-    const st = states.get(d.id)?.state;
-    return mode ? st === 'absent' : st === 'todo' || st === 'partiel';
+    const x = states.get(d.id);
+    const st = x?.state;
+    return mode ? st === 'absent' || x?.absents > 0 : st === 'todo' || st === 'partiel';
   });
   // Départ : position GPS si on est dans le coin, sinon la dernière porte faite.
   const pos = position.value;
@@ -167,8 +168,9 @@ export { nearestOnLine };
 export function openStops() {
   const states = doorStates.value;
   return sectorDoors.value.filter((d) => {
-    const st = states.get(d.id)?.state || 'todo';
-    return st === 'todo' || st === 'partiel' || (repasserMode.value && st === 'absent');
+    const x = states.get(d.id);
+    const st = x?.state || 'todo';
+    return st === 'todo' || st === 'partiel' || (repasserMode.value && (st === 'absent' || x?.absents > 0));
   });
 }
 

@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Seg, NumPad, toast, confetti, Bump, Field, shake } from '../ui/ui.jsx';
-import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState } from '../lib/store.js';
-import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit } from '../lib/model.js';
-import { doorAfter, stats, whereNext, startGuide } from '../lib/tour.js';
+import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState, addResident, updateResident } from '../lib/store.js';
+import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit, flatsOf } from '../lib/model.js';
+import { doorAfter, stats, whereNext, startGuide, repasserMode } from '../lib/tour.js';
+import { residentStates, nextResident, makeResident, floorShort, residentLabel, passCount } from '../lib/residents.js';
+import { BuildingHead, ResidentsPanel, MailboxCta, FloorPicker } from './Building.jsx';
+import { openVisitEdit } from './VisitEdit.jsx';
 import { formatDistance } from '../lib/geo.js';
 import { flyTo } from '../ui/MapView.jsx';
 import { feel } from '../lib/feedback.js';
@@ -50,6 +53,10 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const suggested = door ? suggestAmount(door, data.value.visits.filter((v) => v.sectorId === door.sectorId), org.price || 1000) : 1000;
   const isBuilding = door?.flats > 1;
   const units = isBuilding ? unitsOf(list) : [];
+  const residents = isBuilding ? door.residents || [] : [];
+  const rstates = isBuilding ? residentStates(door, list) : [];
+  // Liste des boîtes établie (photo ou saisie) : on travaille nom par nom. Sinon, logement par logement, et la liste se remplit au fil des saisies.
+  const listMode = isBuilding && !!door.residentsSet && residents.length > 0;
 
   const [amount, setAmount] = useState(suggested);
   const [method, setMethod] = useState('especes');
@@ -64,6 +71,9 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const [popUnit, setPopUnit] = useState(null);
   const [naming, setNaming] = useState(false); // le clavier est ouvert sur le nom : on ne garde que l'essentiel
   const [leaving, setLeaving] = useState(null); // immeuble qu'on vient de quitter (pour le titre du choix)
+  const [sel, setSel] = useState(null); // habitant choisi dans la liste des boîtes (null = nouveau logement)
+  const [floor, setFloor] = useState(null); // étage du logement en cours
+  const [floorOpen, setFloorOpen] = useState(false);
   const bodyRef = useRef();
   const nameRef = useRef();
 
@@ -78,11 +88,66 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     const dd = data.value.doors.find((d) => d.id === doorId);
     if (!dd) return;
     resetForm(dd);
-    const u = unitsOf(byDoor.value.get(doorId) || []);
-    const last = [...u].reverse().find((v) => v.unit);
+    const l = byDoor.value.get(doorId) || [];
+    const u = unitsOf(l);
+    const last = [...u].reverse().find((v) => v.unit && !v.rid);
     setUnit(dd.flats > 1 ? (last ? nextUnit(last.unit) || String(u.length + 1) : String(u.length + 1)) : '');
+    setFloorOpen(false);
+    if (dd.flats > 1) pickResident(firstResident(dd, l), dd, l);
+    else { setSel(null); setFloor(null); }
     bodyRef.current?.closest('.sheet-body')?.scrollTo({ top: 0 });
   }, [doorId]);
+
+  // Qui voir maintenant : un nom pas encore vu ; sinon les absents (en repasse, ou quand tous les logements ont un nom).
+  function firstResident(dd, l, fromRid) {
+    const sts = residentStates(dd, l);
+    if (!sts.length) return null;
+    const nx = nextResident(sts, fromRid);
+    if (!nx) return null;
+    if (nx.state === 'todo') return nx;
+    const ds = doorState(dd, l);
+    const unseen = flatsOf(dd) - (ds.units || 0) - (ds.absents || 0);
+    const newDay = l.length > 0 && new Date(l[l.length - 1].ts).toDateString() !== new Date().toDateString();
+    return repasserMode.value || unseen <= 0 || (!fromRid && newDay) ? nx : null;
+  }
+  function pickResident(s, dd = door, l = list) {
+    if (s) {
+      setSel(s.r.id); setName(s.r.name || ''); setFloor(s.r.floor ?? null);
+    } else {
+      setSel(null); setName('');
+      // Nouveau logement : même étage que le précédent, on monte souvent étage par étage.
+      const lastV = [...l].reverse().find((v) => v.rid && !v.closed);
+      const lr = lastV && (dd?.residents || []).find((r) => r.id === lastV.rid);
+      setFloor(lr ? lr.floor ?? null : null);
+    }
+  }
+  // Le logement à qui l'on parle : l'habitant choisi (nom et étage corrigés au passage), ou un nouveau, ajouté à la liste.
+  function target() {
+    if (!isBuilding) return { unit: unit.trim() || undefined };
+    const nm = name.trim();
+    const r = sel ? residents.find((x) => x.id === sel) : null;
+    if (r) {
+      const patch = {};
+      if (nm && nm !== r.name) patch.name = nm;
+      if ((floor ?? null) !== (r.floor ?? null)) patch.floor = floor ?? null;
+      if (Object.keys(patch).length) updateResident(door.id, r.id, patch);
+      const nr = { ...r, ...patch };
+      return { rid: r.id, unit: nr.unit || nr.name || residentLabel(nr) };
+    }
+    const u = listMode ? '' : unit.trim();
+    const nr = makeResident({ name: nm, floor, unit: u });
+    addResident(door.id, nr);
+    return { rid: nr.id, unit: nr.unit || nr.name || 'Logt ' + (unitsOf(list).length + 1) };
+  }
+
+  // La liste des boîtes vient d'être remplie ou corrigée : on se place sur le premier nom à voir.
+  useEffect(() => {
+    if (!door || !isBuilding) return;
+    const rs = door.residents || [];
+    const cur = sel && rs.find((r) => r.id === sel);
+    if (cur) { setName(cur.name || ''); setFloor(cur.floor ?? null); return; }
+    if (sel || (!name.trim() && door.residentsSet)) pickResident(firstResident(door, list), door, list);
+  }, [door?.residents]);
 
   if (!door) return <div class="empty"><p>Cette porte n'existe plus.</p></div>;
 
@@ -113,7 +178,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   }
 
   // Après une saisie : on reste dans l'immeuble, sinon on file à la porte suivante.
-  function after(savedUnit) {
+  function after(savedUnit, rid) {
     if (sectorFinished()) return;
     if (isBuilding) {
       const now = doorState(door, byDoor.value.get(doorId) || []);
@@ -124,8 +189,12 @@ export function DoorSheet({ doorId: initialId, close, start }) {
         return;
       }
       setPopUnit(savedUnit || '_last');
-      setUnit(nextUnit(savedUnit) || String(unitsOf(byDoor.value.get(doorId) || []).length + 1));
+      const l = byDoor.value.get(doorId) || [];
+      const dd = data.value.doors.find((d) => d.id === doorId);
+      setUnit(nextUnit(savedUnit) || String(unitsOf(l).length + 1));
       resetForm();
+      pickResident(firstResident(dd, l, rid), dd, l);
+      setFloorOpen(false);
       go('ask', 'back');
       return;
     }
@@ -135,14 +204,16 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   }
 
   function record(result) {
-    const u = unit.trim();
+    const t = target();
+    const u = t.unit || '';
     const card = result === 'absent' ? nextCard(door.sectorId) : null;
-    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, name: name.trim() || undefined, note: note.trim() || undefined, card: card || undefined });
+    const v = addVisit({ doorId, sectorId: door.sectorId, result, unit: u || undefined, rid: t.rid, name: name.trim() || undefined, note: note.trim() || undefined, card: card || undefined });
     feel(result === 'refus' ? 'err' : 'ok');
     stamp(result === 'absent' ? 'warn' : 'muted');
     const label = result === 'absent' ? (card ? `Absent · laissez la carte n° ${card}` : 'Absent · on repassera') : result === 'refus' ? 'Refus noté · on ne repassera pas' : 'Déjà pris noté';
-    toast((u ? u + ' · ' : '') + label, { undo: () => { removeVisit(v.id); setMotion('back'); setDoorId(doorId); setStep('ask'); if (u) setUnit(u); } });
-    after(u);
+    const again = result === 'absent' && t.rid ? rstates.find((s) => s.r.id === t.rid)?.absences || 0 : 0;
+    toast((u ? u + ' · ' : '') + label + (again ? ` (${again + 1}e fois)` : ''), { undo: () => { removeVisit(v.id); setMotion('back'); setDoorId(doorId); setStep('ask'); if (u && !t.rid) setUnit(u); if (t.rid) { const s = residentStates(data.value.doors.find((d) => d.id === doorId), byDoor.value.get(doorId) || []).find((x) => x.r.id === t.rid); if (s) pickResident(s); } } });
+    after(u, t.rid);
   }
 
   function give() {
@@ -151,16 +222,16 @@ export function DoorSheet({ doorId: initialId, close, start }) {
       toast('Le nom inscrit sur le chèque, pour la remise en banque', { error: true });
       return;
     }
-    if (!amount) { toast('Choisissez un montant', { error: true }); return; }
-    const u = unit.trim();
+    const t = target();
+    const u = t.unit || '';
     const v = addVisit({
-      doorId, sectorId: door.sectorId, result: 'donne', amount, method, calendars: cals,
-      name: name.trim() || undefined, unit: u || undefined, note: note.trim() || undefined, chequeNo: chequeNo.trim() || undefined,
+      doorId, sectorId: door.sectorId, result: 'donne', amount: amount || 0, method, calendars: cals,
+      name: name.trim() || undefined, unit: u || undefined, rid: t.rid, note: note.trim() || undefined, chequeNo: chequeNo.trim() || undefined,
     });
     feel('ok');
     stamp('ok');
-    toast(`${formatEuro(amount)} enregistrés${method !== 'especes' ? ' · ' + METHODS[method].label.toLowerCase() : ''}`, { undo: () => { removeVisit(v.id); setMotion('back'); setDoorId(doorId); setStep('give'); } });
-    after(u);
+    toast(`${amount ? formatEuro(amount) + ' enregistrés' : 'Calendrier offert'}${amount && method !== 'especes' ? ' · ' + METHODS[method].label.toLowerCase() : ''}`, { action: { label: 'Modifier', run: () => openVisitEdit(v) } });
+    after(u, t.rid);
   }
 
   function closeBuilding() {
@@ -190,6 +261,8 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     setAmount(Math.round(parseFloat((t || '0').replace(',', '.')) * 100));
   }
 
+  const selState = sel ? rstates.find((x) => x.r.id === sel) || null : null;
+  const repasse = isBuilding && (repasserMode.value || flatsOf(door) - (st?.units || 0) - (st?.absents || 0) <= 0 || (list.length > 0 && new Date(list[list.length - 1].ts).toDateString() !== new Date().toDateString()));
   const here = position.value && Date.now() - position.value.ts < 120000 ? position.value.p : null;
   const away = here ? Math.hypot((here[0] - door.p[0]) * 111320 * Math.cos((door.p[1] * Math.PI) / 180), (here[1] - door.p[1]) * 110540) : null;
   const passes = list.filter((v) => v.result === 'absent' && !v.closed);
@@ -220,8 +293,9 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             </div>
             <h2>{door.num} {door.street}</h2>
             <p class="small muted door-meta">
-              {lastYear ? <>{door.lastYear.year || 'L\'an dernier'} : <b>{formatEuro(lastYear)}</b>{door.lastYear.name ? <> · {door.lastYear.name}</> : null}</> : door.lastYear?.result ? <>{door.lastYear.year || 'L\'an dernier'} : {door.lastYear.result === 'absent' ? 'absent' : door.lastYear.result === 'refus' ? 'refus' : 'déjà pris'}</> : <>Première visite</>}
+              {lastYear ? <>{door.lastYear.year || 'L\'an dernier'} : <b>{formatEuro(lastYear)}</b>{door.lastYear.name ? <> · {door.lastYear.name}</> : null}</> : door.lastYear?.result ? <>{door.lastYear.year || 'L\'an dernier'} : {door.lastYear.result === 'absent' ? 'absent' : door.lastYear.result === 'refus' ? 'refus' : 'déjà pris'}</> : isBuilding && passCount(list) > 1 ? <>Immeuble déjà commencé</> : <>Première visite</>}
               {passes.length > 0 && !isBuilding && <> · {passes.length + 1}<sup>e</sup> passage</>}
+              {isBuilding && passCount(list) > 1 && <> · {passCount(list)}<sup>e</sup> passage</>}
             </p>
           </div>
           <IconButton icon="x" label="Fermer" class="flat" onClick={close} />
@@ -236,19 +310,25 @@ export function DoorSheet({ doorId: initialId, close, start }) {
         </div>
       )}
 
-      {step !== 'pick' && isBuilding && !naming && (
-        <BuildingBar door={door} st={st} units={units} unit={unit} setUnit={setUnit} pop={popUnit} />
-      )}
+      {step !== 'pick' && isBuilding && !naming && (listMode ? (
+        step === 'ask' && <BuildingHead door={door} list={list} states={rstates} />
+      ) : (
+        <BuildingBar door={door} st={st} units={units} unit={unit} setUnit={setUnit} pop={popUnit} floor={floor} setFloor={setFloor} picked={!!sel} />
+      ))}
 
       {step === 'ask' && (
         <div class={'stage anim-' + motion} key={'ask' + doorId + units.length}>
           {!isBuilding && list.length > 0 && !naming && <History list={list} st={st} />}
-          <div class="ask-name">
-            <label for="aname"><Icon name="user" size={18} /></label>
-            <input id="aname" class="input" placeholder={isBuilding ? 'Nom sur l\'interphone (facultatif)' : 'Nom sur la boîte (facultatif)'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint="done" data-testid="ask-name" />
-          </div>
+          {listMode || sel ? (
+            <ResidentNow s={selState} floor={floor} setFloor={(f) => { setFloor(f); setFloorOpen(false); }} floorOpen={floorOpen} setFloorOpen={setFloorOpen} name={name} setName={setName} nameProps={nameProps} />
+          ) : (
+            <div class="ask-name">
+              <label for="aname"><Icon name="user" size={18} /></label>
+              <input id="aname" class="input" placeholder={isBuilding ? 'Nom sur la boîte (facultatif)' : 'Nom sur la boîte (facultatif)'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint="done" data-testid="ask-name" />
+            </div>
+          )}
           {suggest}
-          <div class="ask-label">{isBuilding ? <>Logement <b>{unit || 'suivant'}</b> : ils donnent ?</> : 'Ils donnent ?'}</div>
+          <div class="ask-label">{isBuilding ? (listMode || sel ? <><b>{selState ? selState.label : name.trim() || 'Nouveau logement'}</b>{floor != null ? ' · ' + floorShort(floor) : ''} : ils donnent ?</> : <>Logement <b>{unit || 'suivant'}</b>{floor != null ? ' · ' + floorShort(floor) : ''} : ils donnent ?</>) : 'Ils donnent ?'}</div>
           <button class="yes-btn" data-autofocus onClick={() => { feel('tap'); go('give'); }} data-testid="yes">
             <span class="yes-ico"><Icon name="check" /></span>
             <span class="grow">Oui, ils donnent</span>
@@ -259,6 +339,10 @@ export function DoorSheet({ doorId: initialId, close, start }) {
             <button class="outcome tone-bad" onClick={() => record('refus')}><Icon name="refus" />Non merci</button>
             <button class="outcome tone-muted" onClick={() => record('deja')}><Icon name="deja" />Déjà pris</button>
           </div>
+          {isBuilding && !naming && (listMode || (repasse && rstates.some((x) => x.state === 'absent'))) && (
+            <ResidentsPanel door={door} states={rstates} sel={sel} onPick={(x) => { pickResident(x); setFloorOpen(false); }} onNew={() => { feel('tap'); pickResident(null); setFloorOpen(listMode); if (listMode) setTimeout(() => document.getElementById('aname')?.focus(), 60); }} />
+          )}
+          {isBuilding && !naming && !listMode && <MailboxCta door={door} />}
           {isBuilding ? (
             <div class="building-actions nm-hide">
               <Button kind="soft full" icon="swap" onClick={leaveBuilding} data-testid="leave-building">Changer de bâtiment</Button>
@@ -286,7 +370,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
           )}
           <div class="give-top nm-hide">
             <button class="link-btn back-link" onClick={() => go('ask', 'back')}><Icon name="chevL" size={18} /> Retour</button>
-            <span class="tiny muted">{isBuilding && unit ? 'Logement ' + unit : 'Montant du don'}</span>
+            <span class="tiny muted">{isBuilding ? (selState ? selState.label : residents.length ? name.trim() || 'Nouveau logement' : unit ? 'Logement ' + unit : 'Montant du don') + (floor != null ? ' · ' + floorShort(floor) : '') : 'Montant du don'}</span>
           </div>
           <button class={'amount-display nm-hide' + (keypad ? ' typing' : '')} onClick={() => { feel('tick'); setKeypad(!keypad); setTyped(''); }} aria-label={`Montant ${formatEuro(amount)}, toucher pour saisir un autre montant`}>
             <Bump value={amount} class="big-num">{formatEuro(amount)}</Bump>
@@ -305,6 +389,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
                   {q === usual && <small>habituel</small>}
                 </button>
               ))}
+              <button class="amount-tile free" aria-pressed={amount === 0 ? 'true' : 'false'} onClick={() => { feel('tick'); setAmount(0); }} data-testid="amount-free">Offert<small>0 €</small></button>
               <button class="amount-tile other" onClick={() => { feel('tick'); setKeypad(true); setTyped(''); }} data-testid="other-amount"><Icon name="pencil" size={18} /> Autre montant</button>
             </div>
           )}
@@ -350,7 +435,7 @@ export function DoorSheet({ doorId: initialId, close, start }) {
 
           <div class="sticky-action">
             <Button kind="coral full" sound="" onClick={give} data-testid="validate">
-              Enregistrer {formatEuro(amount)}{!isBuilding && next ? <span class="btn-sub"> · puis le {next.num}</span> : null}
+              {amount ? <>Enregistrer {formatEuro(amount)}</> : 'Enregistrer · offert'}{!isBuilding && next ? <span class="btn-sub"> · puis le {next.num}</span> : null}
             </Button>
           </div>
         </div>
@@ -376,11 +461,12 @@ function History({ list, st }) {
   return (
     <div class="history">
       {list.slice(-3).map((v) => (
-        <div class="hist" key={v.id}>
+        <button type="button" class="hist" key={v.id} onClick={() => openVisitEdit(v)} data-testid="hist-row" aria-label={'Modifier ce passage'}>
           <span class={'hdot st-' + v.result} />
-          <span class="grow">{v.closed ? 'Immeuble terminé' : RESULTS[v.result]?.short}{v.unit && !v.closed ? ' · ' + v.unit : ''}{v.amount ? ' · ' + formatEuro(v.amount) : ''}</span>
+          <span class="grow">{v.closed ? 'Immeuble terminé' : RESULTS[v.result]?.short}{v.unit && !v.closed ? ' · ' + v.unit : ''}{v.result === 'donne' ? ' · ' + (v.amount ? formatEuro(v.amount) : 'offert') : ''}</span>
           <span class="muted tiny">{when(v.ts)}</span>
-        </div>
+          <Icon name="pencil" size={14} class="hist-edit" />
+        </button>
       ))}
       {st.state === 'absent' && <div class="tiny muted">{revisitHint(list[list.length - 1])}</div>}
     </div>
@@ -388,7 +474,7 @@ function History({ list, st }) {
 }
 
 // Barre d'immeuble : avancement, logements déjà vus, logement en cours.
-function BuildingBar({ door, st, units, unit, setUnit, pop }) {
+function BuildingBar({ door, st, units, unit, setUnit, pop, floor, setFloor, picked }) {
   const done = st.units || 0;
   const pct = Math.min(1, done / door.flats);
   const R = 19, C = 2 * Math.PI * R;
@@ -410,17 +496,38 @@ function BuildingBar({ door, st, units, unit, setUnit, pop }) {
         <div class="unit-strip" ref={strip} data-free>
           {units.map((v, i) => (
             <span key={v.id} class={'unit-chip st-' + v.result + (i === units.length - 1 && pop ? ' pop' : '')}>
-              <i />{v.unit || 'Logt ' + (i + 1)}{v.amount ? <small>{formatEuro(v.amount)}</small> : null}
+              <i />{(() => { const r = v.rid && door.residents?.find((x) => x.id === v.rid); return r && r.floor != null ? floorShort(r.floor) + ' · ' : ''; })()}{v.unit || 'Logt ' + (i + 1)}{v.amount ? <small>{formatEuro(v.amount)}</small> : null}
             </span>
           ))}
         </div>
       )}
-      <div class="unit-field">
+      {!picked && <><div class="unit-field">
         <label for="unit">Logement</label>
         <IconButton icon="minus" label="Logement précédent" class="flat" onClick={() => { feel('tick'); setUnit(prevUnit(unit)); }} disabled={!/\d/.test(unit)} />
         <input id="unit" class="input" placeholder="Ex. 401" value={unit} onInput={(e) => setUnit(e.currentTarget.value)} {...inputKinds.text} />
         <IconButton icon="plus" label="Logement suivant" class="flat" onClick={() => { feel('tick'); setUnit(nextUnit(unit) || (unit ? unit : '1')); }} />
       </div>
+      <div class="floor-row"><span class="floor-row-l">Étage</span><FloorPicker value={floor} onChange={setFloor} /></div></>}
+    </div>
+  );
+}
+
+// L'habitant à qui l'on parle : étage (un toucher pour le changer) et nom (corrigeable).
+function ResidentNow({ s, floor, setFloor, floorOpen, setFloorOpen, name, setName, nameProps }) {
+  return (
+    <div class="res-now" data-testid="res-now">
+      <div class="res-now-row">
+        <button type="button" class={'floor-badge big' + (floor == null ? ' unk' : '')} onClick={() => { feel('tick'); setFloorOpen(!floorOpen); }} aria-label={'Étage : ' + floorShort(floor) + ', toucher pour changer'} aria-expanded={floorOpen ? 'true' : 'false'} data-testid="now-floor">{floorShort(floor)}</button>
+        <input id="aname" class="input" placeholder={s ? 'Nom' : 'Nom du nouveau logement'} value={name} onInput={(e) => setName(e.currentTarget.value)} {...inputKinds.name} {...nameProps} autoComplete="off" enterKeyHint="done" data-testid="ask-name" />
+      </div>
+      {floorOpen && <FloorPicker value={floor} onChange={setFloor} />}
+      {s && s.last && (
+        <button type="button" class="res-now-last" onClick={() => openVisitEdit(s.last)} data-testid="now-last">
+          <span class={'hdot st-' + s.state} />
+          <span class="grow">{s.state === 'absent' ? `Absent ${s.absences > 1 ? s.absences + ' fois' : 'la dernière fois'}` : s.state === 'donne' ? `A déjà donné ${s.amount ? formatEuro(s.amount) : '(offert)'}` : RESULTS[s.state]?.label}</span>
+          <span class="tiny">Modifier</span>
+        </button>
+      )}
     </div>
   );
 }

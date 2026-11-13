@@ -119,6 +119,14 @@ export function updateVisit(id, patch) {
 export function updateDoor(id, patch) {
   setData((d) => ({ ...d, doors: d.doors.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
 }
+// Habitants d'un immeuble (noms des boîtes aux lettres, étages).
+export function addResident(doorId, r) {
+  setData((d) => ({ ...d, doors: d.doors.map((x) => (x.id === doorId ? { ...x, residents: [...(x.residents || []), r] } : x)) }));
+  return r;
+}
+export function updateResident(doorId, rid, patch) {
+  setData((d) => ({ ...d, doors: d.doors.map((x) => (x.id === doorId ? { ...x, residents: (x.residents || []).map((r) => (r.id === rid ? { ...r, ...patch } : r)) } : x)) }));
+}
 export function addDoor(door) {
   const nd = { id: uid('d'), flats: 1, ...door };
   setData((d) => ({ ...d, doors: [...d.doors, nd] }));

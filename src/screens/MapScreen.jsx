@@ -92,7 +92,7 @@ function Summary({ wide }) {
       <Progress parts={parts} label={`${s.done} portes faites sur ${s.total}`} />
       <div class="legend">
         <span><i style={{ background: 'var(--st-done)' }} />Donné {s.donne}</span>
-        <span><i style={{ background: 'var(--st-repasser)' }} />À repasser {s.absent}</span>
+        <span><i style={{ background: 'var(--st-repasser)' }} />À repasser {s.repasse}</span>
         <span><i style={{ background: 'var(--muted)' }} />Refus {s.refus}</span>
       </div>
       {n ? (
@@ -104,8 +104,8 @@ function Summary({ wide }) {
           </span>
           <Icon name="arrowR" />
         </button>
-      ) : s.absent > 0 && !repasserMode.value ? (
-        <Button kind="ink full" icon="repeat" onClick={() => { repasserMode.value = true; }}>Repasser chez les absents · {s.absent}</Button>
+      ) : s.repasse > 0 && !repasserMode.value ? (
+        <Button kind="ink full" icon="repeat" onClick={() => { repasserMode.value = true; }}>Repasser chez les absents · {s.repasse}</Button>
       ) : sector ? (
         <Button kind="ink full" icon="sectors" onClick={() => openSheet(({ close }) => <SectorPicker close={close} />, { label: 'Changer de secteur' })}>Secteur terminé · en choisir un autre</Button>
       ) : null}

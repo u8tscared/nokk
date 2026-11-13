@@ -3,7 +3,7 @@
 
 const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 const KINDS = new Set(['org', 'members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions', 'callbacks']);
-export const FEATURES = ['admin', 'ref', 'callbacks', 'feedback'];
+export const FEATURES = ['admin', 'ref', 'callbacks', 'feedback', 'boites'];
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const PAGE = 1000;
 const MAX_CHANGES = 500;
@@ -470,6 +470,72 @@ async function readPlan(env, b) {
   return plan;
 }
 
+// ——— Lecture d'une photo de boîtes aux lettres (Workers AI) ———
+const BOITES_PROMPT = `Photo des boîtes aux lettres (ou de l'interphone) d'un immeuble en France.
+Lis CHAQUE étiquette de nom, de gauche à droite puis de haut en bas, exactement comme elle est écrite. N'invente aucun nom ; ignore les étiquettes vides, illisibles, les publicités et les mots comme « Stop pub » ou « La Poste ».
+Pour chaque boîte, donne aussi l'étage s'il est écrit (RDC, 1er, 2e, « 3e étage », « Ét. 4 »…) et le numéro de porte ou d'appartement s'il est écrit (ex. « Apt 12 », « B4 », « 2G »). Sinon mets null. Ne devine pas l'étage d'après la position de la boîte.
+Réponds UNIQUEMENT avec ce JSON compact, sans texte autour :
+{"boites":[{"nom":"nom tel qu'écrit","etage":"étage écrit ou null","porte":"numéro écrit ou null"}]}`;
+
+const BAD_NAME = /^(null|undefined|vide|illisible|inconnu|stop ?pub|pas de pub|la poste|courrier|publicit[eé]s?|syndic|gardien|concierge)$/i;
+export function parseBoites(text) {
+  const m = String(text || '').match(/\{[\s\S]*\}/);
+  let j = null;
+  if (m) { try { j = JSON.parse(m[0]); } catch { j = null; } }
+  if (!j) { const a = String(text || '').match(/\[[\s\S]*\]/); if (a) { try { j = { boites: JSON.parse(a[0]) }; } catch { return null; } } }
+  if (!j) return null;
+  const raw = Array.isArray(j.boites) ? j.boites : Array.isArray(j.noms) ? j.noms : [];
+  const out = [];
+  for (const x of raw.slice(0, 150)) {
+    const nom = cleanStr(typeof x === 'string' ? x : x?.nom || x?.name);
+    if (!nom || nom.length < 2 || BAD_NAME.test(nom)) continue;
+    out.push({ nom, etage: cleanStr(x?.etage == null ? null : String(x.etage)), porte: cleanStr(x?.porte == null ? null : String(x.porte)) });
+  }
+  return out;
+}
+
+const nk = (s) => keyName(String(s || '').replace(/\b(m|mr|mme|mlle|monsieur|madame|et|famille)\b\.?/gi, ' '));
+function near(a, b) {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0; while (i < a.length && a[i] === b[i]) i++;
+  let j = 0; while (j < a.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+  return a.length + b.length - 2 * (i + j) <= 2;
+}
+// La lecture la plus complète sert de base ; l'autre complète les étages et ajoute ce qui manque.
+export function mergeBoites(reads) {
+  const ok = reads.filter((r) => Array.isArray(r) && r.length).sort((a, b) => b.length - a.length);
+  if (!ok.length) return [];
+  const out = ok[0].map((x) => ({ ...x }));
+  for (const r of ok.slice(1)) {
+    for (const x of r) {
+      const k = nk(x.nom);
+      const t = out.find((y) => near(nk(y.nom), k));
+      if (t) { t.etage ||= x.etage; t.porte ||= x.porte; continue; }
+      out.push({ ...x });
+    }
+  }
+  return out.slice(0, 150);
+}
+
+async function readBoites(env, b) {
+  const img = String(b.image || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2.5 * 1024 * 1024) throw new HttpError(400, 'bad_image');
+  if (!env.AI) throw new HttpError(503, 'no_ai');
+  const ask = async (model) => {
+    const r = await env.AI.run(model, {
+      messages: [{ role: 'user', content: [{ type: 'text', text: BOITES_PROMPT }, { type: 'image_url', image_url: { url: img } }] }],
+      max_tokens: 2500, temperature: 0.05,
+    });
+    const text = r?.response ?? r?.choices?.[0]?.message?.content ?? '';
+    return parseBoites(typeof text === 'string' ? text : JSON.stringify(text));
+  };
+  const res = await Promise.allSettled(PLAN_MODELS.map(ask));
+  const boites = mergeBoites(res.map((x) => (x.status === 'fulfilled' ? x.value : null)));
+  if (!boites.length) throw new HttpError(422, 'unreadable');
+  return { boites };
+}
+
 export default {
   async fetch(req, env) {
     const h = cors(req, env);
@@ -496,6 +562,10 @@ export default {
       if (path === '/plan/read' && req.method === 'POST') {
         if (!allowedOrigin(req.headers.get('origin'), env)) throw new HttpError(403, 'origin');
         return json(await readPlan(env, await body(req)), 200, h);
+      }
+      if (path === '/boites/read' && req.method === 'POST') {
+        if (!allowedOrigin(req.headers.get('origin'), env)) throw new HttpError(403, 'origin');
+        return json(await readBoites(env, await body(req)), 200, h);
       }
       const auth = req.headers.get('authorization') || '';
       const user = await verifyToken(auth.replace(/^Bearer\s+/i, ''), env);
