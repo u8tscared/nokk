@@ -2,9 +2,9 @@
 
 L’app des tournées de calendriers des sapeurs-pompiers. Une app web installable (PWA), en français, qui marche hors ligne.
 
-**Ouvrir l’app :** https://u8tscared.github.io/nokk/
+**Ouvrir l’app :** https://nokkapp.fr/
 
-**Présentation (landing) :** https://u8tscared.github.io/nokk/decouvrir/ (fichiers statiques dans `public/decouvrir/`)
+**Présentation (landing) :** https://nokkapp.fr/decouvrir/ (fichiers statiques dans `public/decouvrir/`)
 
 Sur iPhone : Safari → Partager → « Sur l’écran d’accueil ». Sur Android : Chrome → « Installer l’application ».
 

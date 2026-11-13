@@ -154,6 +154,6 @@ export async function downloadBackup() {
   return api(`/teams/${a.team.id}/export`);
 }
 
-export const inviteLink = (code, { s, m } = {}) => `https://u8tscared.github.io/nokk/#join=${code}${s ? '&s=' + encodeURIComponent(s) : ''}${m ? '&m=' + encodeURIComponent(m) : ''}`;
+export const inviteLink = (code, { s, m } = {}) => `https://nokkapp.fr/#join=${code}${s ? '&s=' + encodeURIComponent(s) : ''}${m ? '&m=' + encodeURIComponent(m) : ''}`;
 
 export { stopSync };

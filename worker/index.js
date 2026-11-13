@@ -16,7 +16,7 @@ class HttpError extends Error {
 // ——— CORS ———
 function allowedOrigin(origin, env) {
   if (!origin) return null;
-  const list = (env.ORIGINS || 'https://u8tscared.github.io').split(',').map((s) => s.trim());
+  const list = (env.ORIGINS || 'https://nokkapp.fr,https://u8tscared.github.io').split(',').map((s) => s.trim());
   if (list.includes(origin)) return origin;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
   return null;
@@ -207,7 +207,7 @@ async function exportTeam(env, user, teamId) {
 
 
 // ——— QR « Repassez plus tard » : page publique, sans compte ———
-// Chaque secteur porte un jeton (sector.qr). La carte n° n laissée à une porte renvoie vers /nokk/r/#JETON.n
+// Chaque secteur porte un jeton (sector.qr). La carte n° n laissée à une porte renvoie vers /r/#JETON.n
 const TOKEN_RE = /^[A-Za-z0-9]{8,24}$/;
 async function sectorByToken(env, token) {
   if (!TOKEN_RE.test(token)) throw new HttpError(404, 'unknown_qr');

@@ -124,7 +124,7 @@ export function assignMessage(s, m) {
   const d = data.value;
   const mates = (s.assignees || []).filter((id) => id !== m.id).map((id) => memberById.value.get(id)?.name.split(' ')[0]).filter(Boolean);
   const t = account.value?.team;
-  const link = t ? inviteLink(t.code, { s: s.id, m: m.id }) : 'https://u8tscared.github.io/nokk/';
+  const link = t ? inviteLink(t.code, { s: s.id, m: m.id }) : 'https://nokkapp.fr/';
   const doors = (doorsBySector.value.get(s.id) || []).length;
   return {
     subject: `Tournée des calendriers : ${s.name}`,

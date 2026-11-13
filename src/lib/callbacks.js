@@ -3,7 +3,7 @@ import { signal, computed } from '@preact/signals';
 import { data, setData, updateSector, byDoor } from './store.js';
 import { API_BASE } from './api.js';
 
-export const QR_BASE = 'https://u8tscared.github.io/nokk/r/#';
+export const QR_BASE = 'https://nokkapp.fr/r/#';
 export const serverFeatures = signal(null); // null : on ne sait pas encore
 
 export async function loadFeatures() {

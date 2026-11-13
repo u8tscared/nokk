@@ -188,7 +188,7 @@ function IntroArt({ k }) {
 }
 
 // ——— Faire connaître Nokk ———
-export const SITE = 'https://u8tscared.github.io/nokk/';
+export const SITE = 'https://nokkapp.fr/';
 export const refCode = computed(() => (account.value?.uid ? account.value.uid.slice(0, 8) : null));
 export const shareUrl = computed(() => SITE + 'decouvrir/' + (refCode.value ? '?ref=' + refCode.value : ''));
 const pitch = () => `Je fais la tournée des calendriers avec Nokk : la carte de nos secteurs, le parcours porte à porte, la caisse et les comptes, tout est dans le téléphone. C'est gratuit pour les amicales. ${shareUrl.value}`;

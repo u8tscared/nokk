@@ -1,13 +1,12 @@
-name: Tests et mise en ligne
+name: Tests
 
+# Lancés à la main seulement (onglet Actions > Tests > Run workflow) : les vérifications, on les fait nous-mêmes.
+# La mise en ligne est faite par Cloudflare Pages à chaque push sur main (https://nokkapp.fr).
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,14 +27,3 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --trace off
-      - name: Publier sur gh-pages
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        run: |
-          touch dist/.nojekyll
-          cd dist
-          git init -q -b gh-pages
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -qm "Mise en ligne ${GITHUB_SHA::7}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
