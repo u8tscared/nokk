@@ -1,15 +1,48 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nokk a déménagé</title>
-<script>
-// Nokk est maintenant sur https://nokkapp.fr : on garde le chemin, les paramètres et le #.
-(function () {
-  var p = location.pathname.replace(/^\/nokk/, '') || '/';
-  var to = 'https://nokkapp.fr' + p + location.search + location.hash;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
-  if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-  location.replace(to);
-})();
-</script>
-<style>body{font-family:system-ui,sans-serif;background:#eef2f0;color:#1d2b28;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;text-align:center}a{color:#367a6d;font-weight:600}</style>
-</head><body><p>Nokk a déménagé sur <a href="https://nokkapp.fr/">nokkapp.fr</a>.<br>Pense à réinstaller l'app depuis cette nouvelle adresse.</p></body></html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Nokk</title>
+    <meta name="description" content="La tournée des calendriers des sapeurs-pompiers : secteurs, parcours, portes, caisse." />
+    <meta name="theme-color" content="#eef2f0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Nokk" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Figtree:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Thème posé avant le premier affichage : pas de flash blanc.
+      try {
+        var s = JSON.parse(localStorage.getItem('nokk:settings:v1') || '{}');
+        var t = s.theme, h = new Date().getHours();
+        if (t === 'soir') t = h >= 19 || h < 7 ? 'dark' : 'light';
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
+    <style>
+      html,body{background:#eef2f0;margin:0}
+      @media (prefers-color-scheme: dark){html:not([data-theme=light]),html:not([data-theme=light]) body{background:#0c1618}}
+      html[data-theme=dark],html[data-theme=dark] body{background:#0c1618}
+      #splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:inherit;animation:spl-out .35s 1.05s ease forwards;pointer-events:none}
+      #splash svg{animation:spl-in .8s cubic-bezier(.3,1.3,.5,1) both}
+      #splash .c{transform-origin:58px 58px;animation:spl-fold .45s .45s cubic-bezier(.34,1.56,.64,1) both}
+      @keyframes spl-in{from{opacity:0;transform:scale(.7) rotate(-6deg)}}
+      @keyframes spl-fold{from{transform:scale(0)}}
+      @keyframes spl-out{to{opacity:0;visibility:hidden}}
+      @media (prefers-reduced-motion: reduce){#splash{display:none}}
+    </style>
+    <script type="module" crossorigin src="./assets/index-C6XxRsOZ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DXbRON-s.css">
+  <link rel="manifest" href="./manifest.webmanifest"></head>
+  <body>
+    <div id="splash" aria-hidden="true">
+      <svg width="88" height="88" viewBox="0 0 64 64"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path class="c" d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
+    </div>
+    <div id="app"></div>
+  </body>
+</html>

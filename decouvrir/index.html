@@ -1,15 +1,818 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nokk a déménagé</title>
-<script>
-// Nokk est maintenant sur https://nokkapp.fr : on garde le chemin, les paramètres et le #.
-(function () {
-  var p = location.pathname.replace(/^\/nokk/, '') || '/';
-  var to = 'https://nokkapp.fr' + p + location.search + location.hash;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
-  if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-  location.replace(to);
-})();
-</script>
-<style>body{font-family:system-ui,sans-serif;background:#eef2f0;color:#1d2b28;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;text-align:center}a{color:#367a6d;font-weight:600}</style>
-</head><body><p>Nokk a déménagé sur <a href="https://nokkapp.fr/">nokkapp.fr</a>.<br>Pense à réinstaller l'app depuis cette nouvelle adresse.</p></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Nokk · la tournée des calendriers des sapeurs-pompiers</title>
+  <meta name="description" content="Nokk, l'app des tournées de calendriers des sapeurs-pompiers : secteurs sur la carte, parcours optimisé, saisie porte à porte, caisse, espace caserne, QR « Repassez plus tard ». Marche hors ligne." />
+  <meta name="theme-color" content="#eef2f0" />
+  <link rel="canonical" href="https://u8tscared.github.io/nokk/decouvrir/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="Nokk" />
+  <meta property="og:title" content="Nokk · la tournée des calendriers, enfin simple" />
+  <meta property="og:description" content="Secteurs, parcours, portes, caisse et espace caserne. Gratuit toute cette saison, marche sans réseau." />
+  <meta property="og:url" content="https://u8tscared.github.io/nokk/decouvrir/" />
+  <meta property="og:image" content="https://u8tscared.github.io/nokk/decouvrir/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="../icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Figtree:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="landing.css" />
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><span></span></div>
+
+  <!-- Bandeau de parrainage : affiché quand quelqu'un a partagé un lien personnalisé -->
+  <div class="referral" id="referral" hidden>
+    <span class="referral-dot" aria-hidden="true"></span>
+    <p><strong id="ref-who">Un collègue</strong> <span id="ref-where"></span> vous fait découvrir Nokk.</p>
+    <button class="referral-x" type="button" aria-label="Fermer">×</button>
+  </div>
+
+  <header class="nav" id="top">
+    <a class="brand" href="#top" aria-label="Nokk, haut de page">
+      <svg class="logo" width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path class="corner" d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
+      <span class="wordmark">nokk</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#comment">Comment ça marche</a>
+      <a href="#fonctions">Fonctionnalités</a>
+      <a href="#caserne">Espace caserne</a>
+      <a href="#repasser">QR Repassez</a>
+      <a href="#faq">Questions</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn ghost sm hide-sm" href="#partager">Partager</a>
+      <a class="btn primary sm" data-app href="../">Ouvrir l'app</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <svg class="hero-streets" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g fill="none" stroke="var(--street)" stroke-linecap="round">
+          <path d="M-40 170 H1480" stroke-width="22"/>
+          <path d="M-40 520 C 300 500, 520 600, 820 560 S 1280 470, 1480 520" stroke-width="18"/>
+          <path d="M-40 820 H1480" stroke-width="14"/>
+          <path d="M180 -40 V940" stroke-width="16"/>
+          <path d="M610 -40 C 640 260, 560 520, 640 940" stroke-width="14"/>
+          <path d="M1060 -40 V940" stroke-width="20"/>
+          <path d="M1320 -40 L1220 940" stroke-width="12"/>
+        </g>
+        <g fill="none" stroke-linecap="round" stroke-width="7">
+          <path class="hs-route hs-1" d="M-40 170 H180 V520" stroke="var(--st-done)"/>
+          <path class="hs-route hs-2" d="M180 520 C 300 512, 420 540, 520 565" stroke="var(--st-done)"/>
+          <path class="hs-route hs-3" d="M1060 940 V520 C 1180 486, 1320 500, 1480 520" stroke="var(--st-repasser)"/>
+        </g>
+      </svg>
+
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="pill reveal"><span class="pill-dot"></span>Gratuit toute cette saison</p>
+          <h1 class="hero-title">
+            <span class="line"><span>La tournée des</span></span>
+            <span class="line"><span>calendriers,</span></span>
+            <span class="line"><span class="hl">enfin simple.</span></span>
+          </h1>
+          <p class="hero-sub reveal" style="--d:.5s">Vos secteurs sur la carte, le parcours le plus court, chaque porte en deux gestes et la caisse qui tombe juste. Pour le chef de centre comme pour le binôme sur le trottoir. Même sans réseau.</p>
+          <div class="hero-ctas reveal" style="--d:.62s">
+            <a class="btn primary lg" data-app="demo" href="../#demo">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+              Essayer la démo
+            </a>
+            <a class="btn soft lg" data-app href="../">Créer ma caserne</a>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Aperçu de l'app Nokk pendant une tournée" role="img">
+          <div class="float-card fc-1" data-depth="18">
+            <span class="fc-ico ok">✓</span>
+            <span><b>Secteur 4</b><small>terminé · 1 240 €</small></span>
+          </div>
+          <div class="float-card fc-2" data-depth="-14">
+            <span class="fc-dot"></span>
+            <span><b>Hors ligne</b><small>tout est gardé</small></span>
+          </div>
+          <div class="float-card fc-3" data-depth="10">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            <span><b>Repasser mardi</b><small>18 h – 19 h · Bât. B</small></span>
+          </div>
+
+          <div class="phone hero-phone" data-tilt>
+            <div class="screen">
+              <div class="scr-map">
+                <svg class="hmap" viewBox="0 0 280 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <rect width="280" height="600" fill="var(--map-bg)"/>
+                  <g fill="var(--map-park)"><rect x="196" y="300" width="90" height="70" rx="10"/></g>
+                  <g fill="var(--map-building)">
+                    <rect x="20" y="96" width="44" height="40" rx="4"/><rect x="86" y="98" width="50" height="36" rx="4"/><rect x="160" y="100" width="40" height="44" rx="4"/>
+                    <rect x="22" y="178" width="38" height="48" rx="4"/><rect x="92" y="186" width="42" height="40" rx="4"/><rect x="166" y="190" width="54" height="34" rx="4"/>
+                    <rect x="18" y="262" width="46" height="54" rx="4"/><rect x="96" y="268" width="36" height="46" rx="4"/>
+                    <rect x="24" y="352" width="40" height="40" rx="4"/><rect x="90" y="350" width="48" height="44" rx="4"/><rect x="160" y="400" width="44" height="40" rx="4"/>
+                  </g>
+                  <g fill="none" stroke="var(--map-casing)" stroke-linecap="round" stroke-width="13">
+                    <path d="M-10 160 H290"/><path d="M-10 245 H290"/><path d="M-10 335 H180"/><path d="M76 60 V460"/><path d="M150 60 V460"/><path d="M234 60 V290"/><path d="M-10 420 C 80 410, 160 440, 290 470"/>
+                  </g>
+                  <g fill="none" stroke="var(--map-road)" stroke-linecap="round" stroke-width="10">
+                    <path d="M-10 160 H290"/><path d="M-10 245 H290"/><path d="M-10 335 H180"/><path d="M76 60 V460"/><path d="M150 60 V460"/><path d="M234 60 V290"/><path d="M-10 420 C 80 410, 160 440, 290 470"/>
+                  </g>
+                  <path d="M10 82 L262 82 L262 300 L190 352 L190 448 L10 448 Z" fill="var(--accent)" fill-opacity=".07" stroke="var(--ink)" stroke-opacity=".5" stroke-width="1.6" stroke-dasharray="6 5"/>
+                  <path id="h-route" d="M20 160 H234 V245 H76 V335 H150 V430" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-dasharray="1.5 4" stroke-linecap="round" opacity=".7"/>
+                  <g id="h-doors"></g>
+                  <circle id="h-me-halo" r="14" fill="#3b82f6" opacity=".18"/>
+                  <circle id="h-me" r="6.5" fill="#3b82f6" stroke="#fff" stroke-width="2.5"/>
+                </svg>
+
+                <div class="m-top">
+                  <div class="m-sector">
+                    <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
+                    <b>Secteur 4</b><span>· Les Lilas</span>
+                  </div>
+                  <div class="m-avatars"><i style="--c:#367a6d">LM</i><i style="--c:#d9554f">ID</i></div>
+                </div>
+                <div class="m-offline"><span></span>Hors ligne · tout est gardé</div>
+
+                <div class="m-card">
+                  <div class="m-stats">
+                    <div><small>Ce soir</small><b class="m-euro"><span id="h-euro">495</span> €</b></div>
+                    <div class="r"><b><span id="h-done">36</span><i>/109</i></b><small>portes</small></div>
+                  </div>
+                  <div class="m-bar"><span class="g" id="h-bar-g"></span><span class="o"></span><span class="x"></span></div>
+                  <div class="m-next">
+                    <span class="m-num" id="h-num">56</span>
+                    <span class="m-next-t"><small>Porte suivante · 35 m</small><b id="h-addr">56 rue des Lilas</b></span>
+                    <span class="m-arrow">→</span>
+                  </div>
+                </div>
+                <div class="m-tabs">
+                  <span class="on">Carte</span><span>Secteurs</span><span class="door"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21V4h10v17M5 21h14M14 12.5h.01" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Caisse</span><span>Plus</span>
+                </div>
+
+                <div class="m-scrim" id="h-scrim"></div>
+                <div class="m-sheet" id="h-sheet">
+                  <i class="grab"></i>
+                  <small class="eyebrow">Porte suivante</small>
+                  <b class="sheet-addr" id="h-sheet-addr">56 rue des Lilas</b>
+                  <div class="sheet-hist"><span>2025</span> 15 € · préfère le soir</div>
+                  <div class="sheet-quick"><span>Absent</span><span>Refus</span><span>Déjà pris</span></div>
+                  <div class="sheet-amounts" id="h-amounts"><span>5 €</span><span>10 €</span><span>15 €</span><span>20 €</span></div>
+                  <div class="sheet-pay"><span class="on">Espèces</span><span>Chèque</span><span>Carte</span></div>
+                  <span class="sheet-ok" id="h-ok">Valider</span>
+                </div>
+                <div class="m-toast" id="h-toast">+15 €</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============ PROBLÈME → SOLUTION ============ -->
+    <section class="before-after section">
+      <div class="wrap">
+        <p class="kicker reveal">Avant / avec Nokk</p>
+        <h2 class="h2 reveal">Fini le carnet à spirale, la photocopie du plan et le recomptage à minuit.</h2>
+        <p class="lead reveal">Faites glisser pour voir la différence.</p>
+        <div class="compare reveal" id="compare" style="--x:50%">
+          <div class="cmp-layer cmp-after" aria-label="Avec Nokk">
+            <span class="cmp-tag after-tag">Avec Nokk</span>
+            <ul class="cmp-rows">
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M4 7h4l2-3h4l2 3h4v12H4z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span><b>Secteur 4 importé en photo</b><small>214 portes · 38 rues · imprimable en PDF</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Rue Pasteur · faite</b><small>par Thomas et Inès, mardi à 19 h 12</small></span><i class="street"></i></li>
+              <li><span class="ci warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span><b>3 absents à revoir</b><small>ajoutés à la tournée de mardi, 18 h</small></span></li>
+              <li><span class="ci ok"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span><span><b>Caisse : 1 250 €</b><small>écart 0 € · remise signée au trésorier</small></span><em class="zero">0 €</em></li>
+            </ul>
+          </div>
+          <div class="cmp-layer cmp-before" aria-label="Avant">
+            <span class="cmp-tag before-tag">Avant</span>
+            <span class="coffee" aria-hidden="true"></span>
+            <ul class="cmp-rows hand">
+              <li><span class="ci">✗</span><span><b>Plan photocopié n°3…</b><small>et le n°4 il est où ??</small></span></li>
+              <li><span class="ci">✗</span><span><b>R. Pasteur → <s>fait</s> ?</b><small>demander à Thomas</small></span></li>
+              <li><span class="ci">✗</span><span><b>Absents : 12, 14, 18 bis…</b><small>repasser un jour (?)</small></span></li>
+              <li><span class="ci">✗</span><span><b>Caisse : 1 235 € ???</b><small>il manque 15 €, on recompte…</small></span></li>
+            </ul>
+          </div>
+          <div class="cmp-handle" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <input class="cmp-range" type="range" min="0" max="100" value="50" aria-label="Comparer avant et avec Nokk" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMMENT ÇA MARCHE (écrans qui défilent) ============ -->
+    <section class="how section" id="comment">
+      <div class="wrap">
+        <p class="kicker reveal">Comment ça marche</p>
+        <h2 class="h2 reveal">De vos vieilles fiches à la première porte, en une soirée.</h2>
+        <p class="lead reveal">Une micro-formation est intégrée à chaque écran : une bulle montre où toucher, on fait le geste, on passe à la suite. Personne n'a besoin d'un tuto.</p>
+
+        <div class="how-grid">
+          <ol class="steps">
+            <li class="step" data-step="0">
+              <span class="step-n">01</span>
+              <h3>Créez vos secteurs : en photo ou au doigt</h3>
+              <p>Deux façons, au choix. Prenez en photo la fiche papier de chaque secteur : Nokk repère le tracé au feutre et le pose sur la vraie carte. Ou tracez le contour vous-même, du doigt, directement sur la carte. Dans les deux cas, Nokk trouve toutes les rues et les portes à l'intérieur.</p>
+              <ul class="ticks"><li>Photo du plan, tracé au doigt ou liste d'adresses</li><li>Partout en France, rues et numéros officiels</li><li>Impression PDF du secteur avec la liste des rues</li></ul>
+              <div class="step-phone"></div>
+            </li>
+            <li class="step" data-step="1">
+              <span class="step-n">02</span>
+              <h3>Invitez votre équipe</h3>
+              <p>Le chef ajoute ses pompiers par lien ou par e-mail. Chacun reçoit : « Vous êtes affecté au secteur 12 avec Thomas ». Un clic, il est dedans, avec son binôme et sa carte.</p>
+              <ul class="ticks"><li>Rôles : chef, pompier, trésorier</li><li>Binômes du soir, réaffectation en un geste</li></ul>
+              <div class="step-phone"></div>
+            </li>
+            <li class="step" data-step="2">
+              <span class="step-n">03</span>
+              <h3>Suivez le parcours, porte par porte</h3>
+              <p>Le gros bouton rouge ouvre la porte suivante. Absent, refus, déjà pris : un geste. Un don : le montant, le moyen, valider. La fiche passe seule à la porte d'après, sur le meilleur trajet à pied.</p>
+              <ul class="ticks"><li>Historique de la porte : « 2025 : 20 €, préfère le soir »</li><li>Notes rapides : chien, digicode, ne pas sonner</li></ul>
+              <div class="hero-ctas"><a class="btn soft" data-app="demo-pompier" href="../#demo-pompier">Essayer la démo pompier</a></div>
+              <div class="step-phone"></div>
+            </li>
+            <li class="step" data-step="3">
+              <span class="step-n">04</span>
+              <h3>Fermez la caisse sans écart</h3>
+              <p>En fin de soirée, comptez les billets à l'écran : Nokk compare avec ce qui a été saisi porte par porte. Remise au trésorier signée, reçu PDF, bilan partagé à l'équipe.</p>
+              <ul class="ticks"><li>Espèces, chèques, carte, calendriers restants</li><li>Bordereau de chèques et export tableur</li></ul>
+              <div class="step-phone"></div>
+            </li>
+          </ol>
+
+          <div class="how-sticky" aria-hidden="true">
+            <div class="how-rail"><span></span></div>
+            <div class="phone how-phone">
+              <div class="screen" id="how-screens">
+
+                <!-- Écran 1 : photo du plan papier → secteur -->
+                <div class="hs hs-photo" data-screen="0">
+                  <div class="cam-top"><span>Photo du plan</span><small>Secteur 12</small></div>
+                  <div class="paper">
+                    <svg viewBox="0 0 240 300" aria-hidden="true">
+                      <rect width="240" height="300" fill="#f5efe1"/>
+                      <g stroke="#9aa09b" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7">
+                        <path d="M10 70 H230"/><path d="M10 150 C 80 140, 150 170, 230 160"/><path d="M10 235 H230"/><path d="M60 10 V290"/><path d="M150 10 C 140 100, 165 200, 150 290"/>
+                      </g>
+                      <g font-family="ui-monospace,monospace" font-size="8" fill="#6c706b"><text x="66" y="60">r. Pasteur</text><text x="156" y="120" transform="rotate(88 156 120)">av. Foch</text><text x="16" y="228">bd Gambetta</text></g>
+                      <path class="marker" d="M38 52 C 90 40, 160 44, 196 56 C 206 110, 200 180, 190 214 C 140 226, 80 228, 40 220 C 32 160, 30 100, 38 52 Z" fill="none" stroke="#d64a3f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <text x="78" y="138" font-family="'Archivo',sans-serif" font-weight="800" font-size="22" fill="#d64a3f" transform="rotate(-6 100 140)">S. 12</text>
+                    </svg>
+                    <span class="scanline"></span>
+                    <span class="cc c1"></span><span class="cc c2"></span><span class="cc c3"></span><span class="cc c4"></span>
+                  </div>
+                  <div class="cam-bottom"><small>Tracé détecté · 4 rues</small><span class="shutter"></span></div>
+                  <div class="result">
+                    <svg viewBox="0 0 240 300" aria-hidden="true">
+                      <rect width="240" height="300" fill="var(--map-bg)"/>
+                      <g stroke="var(--map-road)" stroke-width="8" fill="none" stroke-linecap="round">
+                        <path d="M10 70 H230"/><path d="M10 150 C 80 140, 150 170, 230 160"/><path d="M10 235 H230"/><path d="M60 10 V290"/><path d="M150 10 C 140 100, 165 200, 150 290"/>
+                      </g>
+                      <path class="poly" d="M38 52 L196 56 L190 214 L40 220 Z" fill="var(--accent)" fill-opacity=".16" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>
+                      <g fill="var(--paper)" stroke="var(--accent)" stroke-width="2" class="pdots">
+                        <circle cx="60" cy="70" r="3.5"/><circle cx="90" cy="70" r="3.5"/><circle cx="120" cy="70" r="3.5"/><circle cx="150" cy="70" r="3.5"/><circle cx="180" cy="70" r="3.5"/>
+                        <circle cx="60" cy="110" r="3.5"/><circle cx="60" cy="190" r="3.5"/><circle cx="96" cy="148" r="3.5"/><circle cx="130" cy="156" r="3.5"/><circle cx="170" cy="162" r="3.5"/>
+                        <circle cx="146" cy="110" r="3.5"/><circle cx="152" cy="200" r="3.5"/>
+                      </g>
+                    </svg>
+                    <div class="result-card"><b>Secteur 12 créé</b><span>214 portes · 38 rues · 2,4 km</span></div>
+                  </div>
+                </div>
+
+                <!-- Écran 2 : invitations -->
+                <div class="hs hs-team" data-screen="1">
+                  <div class="scr-head"><small>Caserne de Caluire</small><b>Équipe</b></div>
+                  <div class="team-list">
+                    <div class="tm"><i style="--c:#367a6d">TB</i><span><b>Thomas B.</b><small>Secteur 12 · avec Inès</small></span><em class="ok">Actif</em></div>
+                    <div class="tm"><i style="--c:#d9554f">ID</i><span><b>Inès D.</b><small>Secteur 12 · avec Thomas</small></span><em class="ok">Actif</em></div>
+                    <div class="tm"><i style="--c:#3f6c8f">SL</i><span><b>Sarah L.</b><small>Secteur 5 · avec Hugo</small></span><em class="ok">Actif</em></div>
+                    <div class="tm new"><i style="--c:#a8690f">HM</i><span><b>Hugo M.</b><small>Secteur 5 · avec Sarah</small></span><em class="wait">Invité</em></div>
+                  </div>
+                  <div class="invite-btn">+ Inviter par lien ou e-mail</div>
+                  <div class="mail">
+                    <div class="mail-from"><svg width="16" height="16" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg><span>Nokk · Caserne de Caluire</span><small>maintenant</small></div>
+                    <b>Vous êtes affecté au secteur 12</b>
+                    <p>Bonjour Hugo, vous faites la tournée avec <u>Sarah</u> à partir du 18 novembre.</p>
+                    <span class="mail-cta">Rejoindre l'équipe</span>
+                  </div>
+                </div>
+
+                <!-- Écran 3 : porte par porte + formation -->
+                <div class="hs hs-door" data-screen="2">
+                  <svg class="mini-map" viewBox="0 0 280 300" aria-hidden="true">
+                    <rect width="280" height="300" fill="var(--map-bg)"/>
+                    <g stroke="var(--map-road)" stroke-width="12" fill="none" stroke-linecap="round"><path d="M-10 90 H290"/><path d="M-10 200 H290"/><path d="M90 -10 V310"/><path d="M200 -10 V310"/></g>
+                    <path class="walk" d="M10 90 H200 V200 H90 V300" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <g class="dd"><circle cx="40" cy="80" r="5"/><circle cx="70" cy="100" r="5"/><circle cx="120" cy="80" r="5"/><circle cx="160" cy="100" r="5"/><circle cx="190" cy="80" r="5"/><circle cx="210" cy="130" r="5"/><circle cx="190" cy="170" r="5"/></g>
+                  </svg>
+                  <div class="sheet static">
+                    <i class="grab"></i>
+                    <small class="eyebrow">Porte 23 / 109</small>
+                    <b class="sheet-addr">14 rue Pasteur</b>
+                    <div class="sheet-hist"><span>2025</span> 20 € · M. Dupont · préfère le soir</div>
+                    <div class="chips"><span class="chip warn">🐕 Chien</span><span class="chip">Digicode 4B12</span><span class="chip add">+ note</span></div>
+                    <div class="sheet-amounts"><span>5 €</span><span>10 €</span><span class="on">20 €</span><span>Autre</span></div>
+                    <span class="sheet-ok">Valider · 20 €</span>
+                  </div>
+                  <div class="coach"><b>Touchez ici</b> pour enregistrer le don. La porte suivante s'ouvre toute seule.<span class="coach-step">2 / 5</span></div>
+                  <span class="tap-ring" aria-hidden="true"></span>
+                </div>
+
+                <!-- Écran 4 : caisse -->
+                <div class="hs hs-cash" data-screen="3">
+                  <div class="scr-head"><small>Binôme Thomas · Inès</small><b>Caisse</b></div>
+                  <div class="cash-card">
+                    <small>Espèces à remettre</small>
+                    <b class="cash-big"><span class="count" data-to="355">355</span> €</b>
+                    <div class="cash-mini"><span><small>Chèques</small><b>75 €</b></span><span><small>Carte</small><b>65 €</b></span><span><small>Calendriers</small><b>36</b></span></div>
+                  </div>
+                  <div class="bills">
+                    <div class="bill"><em>50 €</em><span>−</span><b class="bn" data-n="3">3</b><span>+</span></div>
+                    <div class="bill"><em>20 €</em><span>−</span><b class="bn" data-n="7">7</b><span>+</span></div>
+                    <div class="bill"><em>10 €</em><span>−</span><b class="bn" data-n="5">5</b><span>+</span></div>
+                    <div class="bill"><em>5 €</em><span>−</span><b class="bn" data-n="3">3</b><span>+</span></div>
+                  </div>
+                  <div class="gap-ok"><span>✓</span> Écart : 0 € · prêt à remettre</div>
+                  <div class="cash-bar"><span><small>Attendu</small><b>355 €</b></span><em>Remettre</em></div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FONCTIONNALITÉS (bento) ============ -->
+    <section class="features section" id="fonctions">
+      <div class="wrap">
+        <p class="kicker reveal">Tout ce qu'il faut, rien de trop</p>
+        <h2 class="h2 reveal">Pensé avec des pompiers, pour la vraie vie d'une tournée.</h2>
+
+        <div class="bento">
+          <article class="card c-map wide reveal">
+            <div class="card-art art-map" aria-hidden="true">
+              <svg viewBox="0 0 400 180">
+                <rect width="400" height="180" fill="var(--map-bg)"/>
+                <g stroke="var(--map-road)" stroke-width="10" fill="none" stroke-linecap="round"><path d="M-10 50 H410"/><path d="M-10 130 H410"/><path d="M80 -10 V190"/><path d="M200 -10 V190"/><path d="M320 -10 V190"/></g>
+                <g stroke-width="6" fill="none" stroke-linecap="round" class="paint">
+                  <path d="M-10 50 H200" stroke="var(--st-done)"/>
+                  <path d="M200 50 V130" stroke="var(--st-done)" style="--pd:.4s"/>
+                  <path d="M200 130 H320" stroke="var(--st-live)" style="--pd:.8s"/>
+                  <path d="M80 130 V190" stroke="var(--st-repasser)" style="--pd:1.2s"/>
+                </g>
+                <circle cx="320" cy="130" r="8" fill="var(--st-live)" class="pulse"/>
+              </svg>
+              <div class="legend"><span><i style="--c:var(--st-done)"></i>Fait</span><span><i style="--c:var(--st-live)"></i>Équipe dessus</span><span><i style="--c:var(--st-repasser)"></i>À repasser</span><span><i style="--c:var(--st-todo)"></i>À faire</span></div>
+            </div>
+            <h3>Carte et secteurs</h3>
+            <p>Toutes les rues de la commune, découpées en secteurs. Chaque rue se colore en direct : on voit d'un coup d'œil ce qui est fait et ce qui reste.</p>
+          </article>
+
+          <article class="card c-photo reveal">
+            <div class="card-art art-scan" aria-hidden="true"><div class="scan-paper"><span class="scan-mark"></span><span class="scan-line"></span></div></div>
+            <h3>Tracé depuis une photo</h3>
+            <p>Vos anciennes fiches deviennent des secteurs en une photo. La transition se fait sans rien perdre.</p>
+          </article>
+
+          <article class="card c-draw reveal">
+            <div class="card-art art-draw" aria-hidden="true">
+              <svg viewBox="0 0 200 120">
+                <rect width="200" height="120" fill="var(--map-bg)"/>
+                <g stroke="var(--map-road)" stroke-width="7" fill="none" stroke-linecap="round"><path d="M-5 30 H205 M-5 88 H205 M52 -5 V125 M140 -5 V125"/></g>
+                <path id="draw-poly" d="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z" fill="var(--accent)" fill-opacity="0" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+                  <animate attributeName="stroke-dashoffset" values="100;0;0;100" keyTimes="0;.55;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                  <animate attributeName="fill-opacity" values="0;0;.18;.18;0" keyTimes="0;.55;.62;.9;1" dur="4.5s" repeatCount="indefinite"/>
+                </path>
+                <g>
+                  <circle r="9" fill="var(--accent-2)" opacity=".25"/>
+                  <circle r="5" fill="var(--accent-2)" stroke="#fff" stroke-width="2"/>
+                  <animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;1;0" keyTimes="0;.55;.9;1" calcMode="linear" path="M38 18 L120 12 L168 44 L156 104 L64 108 L30 70 Z"/>
+                  <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.6;.95;1" dur="4.5s" repeatCount="indefinite"/>
+                </g>
+              </svg>
+            </div>
+            <h3>Tracé au doigt</h3>
+            <p>Pas de fiche papier ? Dessinez le contour du secteur sur la carte : les rues et les portes se remplissent toutes seules.</p>
+          </article>
+
+          <article class="card c-route reveal">
+            <div class="card-art art-route" aria-hidden="true">
+              <svg viewBox="0 0 200 110"><g stroke="var(--rim-2)" stroke-width="2" fill="none"><path d="M10 30 H190 M10 80 H190"/></g><path class="zig" d="M14 30 L40 80 L66 30 L92 80 L118 30 L144 80 L170 30 L186 80" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Parcours optimisé</h3>
+            <p>Zigzag dans les petites rues, un trottoir puis l'autre dans les grandes. Le trajet à pied le plus court, calculé tout seul.</p>
+          </article>
+
+          <article class="card c-door reveal">
+            <div class="card-art art-tap" aria-hidden="true"><span>Absent</span><span>Refus</span><span class="t">10 €</span><span>20 €</span></div>
+            <h3>Porte à porte en 2 gestes</h3>
+            <p>Immeubles, appartements, repassages et annulation. Le pouce suffit.</p>
+          </article>
+
+          <article class="card c-cash reveal">
+            <div class="card-art art-cash" aria-hidden="true"><b><span class="count" data-to="1240">1 240</span> €</b><small>Écart <em>0 €</em></small></div>
+            <h3>Caisse et comptes</h3>
+            <p>Caisse par binôme, comptage des billets, remises signées, comptes par secteur, par équipier et par jour.</p>
+          </article>
+
+          <article class="card c-stats reveal">
+            <div class="card-art art-bars" aria-hidden="true">
+              <div class="bars"><span style="--h:46%"><i>S1</i></span><span style="--h:72%"><i>S2</i></span><span style="--h:58%"><i>S3</i></span><span class="best" style="--h:94%"><i>S4</i></span><span style="--h:64%"><i>S5</i></span></div>
+              <small>€ par porte · S4 en tête</small>
+            </div>
+            <h3>Tournées et stats</h3>
+            <p>Chrono, rythme et argent en direct. Les secteurs qui rapportent le plus, l'€ par porte, la comparaison avec l'an dernier.</p>
+          </article>
+
+          <article class="card c-live reveal">
+            <div class="card-art art-live" aria-hidden="true">
+              <svg viewBox="0 0 200 110"><rect width="200" height="110" rx="12" fill="var(--map-bg)"/><g stroke="var(--map-road)" stroke-width="8" fill="none" stroke-linecap="round"><path d="M-5 35 H205 M-5 80 H205 M60 -5 V115 M140 -5 V115"/></g></svg>
+              <span class="mover m1">TB</span><span class="mover m2">SL</span>
+            </div>
+            <h3>Binômes en direct</h3>
+            <p>Le chef voit où est chaque équipe. Les rues faites se colorent pour ne jamais repasser au même endroit.</p>
+          </article>
+
+          <article class="card c-history reveal">
+            <div class="card-art art-hist" aria-hidden="true">
+              <div class="hist-row"><span>2024</span><b>10 €</b></div>
+              <div class="hist-row"><span>2025</span><b>20 €</b><em>soir</em></div>
+              <div class="hist-row now"><span>2026</span><b>?</b></div>
+            </div>
+            <h3>Historique d'une année sur l'autre</h3>
+            <p>Chaque porte se souvient : montant, nom, préférences. L'an prochain, vous savez à quoi vous attendre.</p>
+          </article>
+
+          <article class="card c-notes reveal">
+            <div class="card-art art-notes" aria-hidden="true"><span>🐕 Chien</span><span>Digicode</span><span>Interphone HS</span><span>Ne pas sonner</span></div>
+            <h3>Notes rapides</h3>
+            <p>Une touche pour noter ce qui compte. Le binôme de l'an prochain vous remerciera.</p>
+          </article>
+
+          <article class="card c-offline reveal">
+            <div class="card-art art-off" aria-hidden="true">
+              <span class="sig"><i></i><i></i><i></i><i></i></span>
+              <span class="queue"><b class="q">3</b> saisies en attente</span>
+              <span class="synced">✓ Synchronisé</span>
+            </div>
+            <h3>Hors ligne, pour de vrai</h3>
+            <p>Cage d'escalier, sous-sol, campagne : tout est gardé sur le téléphone et part dès que le réseau revient.</p>
+          </article>
+
+          <article class="card c-mail reveal">
+            <div class="card-art art-mail" aria-hidden="true"><div class="cal-evt"><span class="cal-day"><small>mar.</small><b>17</b></span><span class="cal-txt"><b>Les pompiers</b><small>18 h – 19 h</small></span><span class="cal-add">✓</span></div></div>
+            <h3>Dans son agenda</h3>
+            <p>L'habitant qui a demandé un passage l'ajoute à son agenda en un geste. Il n'oublie pas, vous ne repassez pas pour rien.</p>
+          </article>
+
+          <article class="card c-learn reveal">
+            <div class="card-art art-learn" aria-hidden="true"><span class="target"></span><span class="bubble">Touchez ici pour créer votre campagne</span></div>
+            <h3>Formation intégrée</h3>
+            <p>Au premier lancement, une micro-formation guide chaque écran : où toucher, quoi faire, et c'est parti.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ESPACE CASERNE ============ -->
+    <section class="caserne section" id="caserne">
+      <div class="wrap caserne-grid">
+        <div class="caserne-copy">
+          <p class="kicker reveal">Espace caserne</p>
+          <h2 class="h2 reveal">Le chef voit tout. Sans courir après personne.</h2>
+          <ul class="big-list">
+            <li class="reveal"><b>Inviter en un lien</b><span>Par e-mail ou par lien : chaque pompier arrive directement dans son secteur, avec son binôme.</span></li>
+            <li class="reveal"><b>Réaffecter en un geste</b><span>Un binôme indisponible ? Glissez son secteur vers une autre équipe, ils sont prévenus.</span></li>
+            <li class="reveal"><b>Suivre en direct</b><span>Qui est où, combien de portes, combien d'euros. Même quand les téléphones reviennent du hors ligne.</span></li>
+            <li class="reveal"><b>Comparer d'une année sur l'autre</b><span>Les secteurs qui marchent, ceux qui s'essoufflent, l'€ par porte. Et les exports pour l'amicale.</span></li>
+          </ul>
+          <div class="hero-ctas reveal"><a class="btn primary lg" data-app="demo-caserne" href="../#demo-caserne">Essayer la démo chef de caserne</a></div>
+        </div>
+
+        <div class="dash-wrap reveal" aria-label="Aperçu du tableau de bord de la caserne" role="img">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>nokk · Caserne de Caluire</span></div>
+            <div class="dash">
+              <aside class="dash-side">
+                <b class="dash-brand">nokk</b>
+                <span class="on">Tableau de bord</span><span>Secteurs</span><span>Équipe</span><span>Comptes</span><span>Exports</span>
+              </aside>
+              <div class="dash-main">
+                <div class="kpis">
+                  <div class="kpi"><small>Collecté</small><b><span class="count" data-to="12840">12 840</span> €</b><em class="up">+14 % vs 2025</em></div>
+                  <div class="kpi"><small>Portes faites</small><b><span class="count" data-to="62">62</span> %</b><em>2 140 / 3 450</em></div>
+                  <div class="kpi"><small>€ par porte</small><b>3,8 €</b><em class="up">+0,4 €</em></div>
+                </div>
+                <div class="dash-row">
+                  <div class="panel sectors">
+                    <div class="panel-h"><b>Secteurs</b><small>avancement</small></div>
+                    <div class="sec"><span>S1 · Centre</span><i style="--p:100%"></i><b>2 310 €</b></div>
+                    <div class="sec"><span>S4 · Les Lilas</span><i style="--p:86%"></i><b>1 940 €</b></div>
+                    <div class="sec"><span>S5 · Montessuy</span><i style="--p:61%" class="live"></i><b>1 220 €</b></div>
+                    <div class="sec"><span>S12 · Pasteur</span><i style="--p:34%" class="live"></i><b>860 €</b></div>
+                    <div class="sec"><span>S7 · Vassieux</span><i style="--p:0%"></i><b>—</b></div>
+                  </div>
+                  <div class="panel livemap">
+                    <div class="panel-h"><b>En direct</b><small><i class="live-dot"></i>3 binômes</small></div>
+                    <svg viewBox="0 0 200 150" aria-hidden="true">
+                      <rect width="200" height="150" rx="10" fill="var(--map-bg)"/>
+                      <g stroke="var(--map-road)" stroke-width="7" fill="none" stroke-linecap="round"><path d="M-5 40 H205 M-5 100 H205 M50 -5 V155 M120 -5 V155 M175 -5 V155"/></g>
+                      <path d="M-5 40 H120 V100" stroke="var(--st-done)" stroke-width="4" fill="none" stroke-linecap="round"/>
+                      <path d="M175 -5 V100 H120" stroke="var(--st-live)" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="4 5"/>
+                    </svg>
+                    <span class="mover dm1">TB</span><span class="mover dm2">SL</span><span class="mover dm3">HM</span>
+                  </div>
+                </div>
+                <div class="panel yoy">
+                  <div class="panel-h"><b>2025 / 2026</b><small>par semaine</small></div>
+                  <div class="yoy-bars">
+                    <span><i style="--a:38%;--b:44%"></i></span><span><i style="--a:62%;--b:70%"></i></span><span><i style="--a:80%;--b:92%"></i></span><span><i style="--a:54%;--b:66%"></i></span><span><i style="--a:30%;--b:41%"></i></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="toast-float"><span class="fc-ico ok">✓</span><span><b>Secteur 7 réaffecté</b><small>à Sarah et Hugo · prévenus</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ QR REPASSEZ PLUS TARD ============ -->
+    <section class="repasser section" id="repasser">
+      <div class="wrap">
+        <p class="kicker reveal">Nouveau · QR « Repassez plus tard »</p>
+        <h2 class="h2 reveal">Personne derrière la porte ? L'habitant choisit quand vous repassez.</h2>
+        <p class="lead reveal">Comme une livraison. Vous glissez un QR dans la boîte aux lettres, l'habitant choisit son créneau, et la porte revient toute seule dans votre tournée de rattrapage.</p>
+
+        <div class="story" data-story>
+          <div class="story-tabs" role="tablist">
+            <button role="tab" class="on" data-i="0"><span>1</span>On imprime</button>
+            <button role="tab" data-i="1"><span>2</span>L'habitant scanne</button>
+            <button role="tab" data-i="2"><span>3</span>On repasse au bon moment</button>
+            <i class="story-progress"><span></span></i>
+          </div>
+
+          <div class="story-stage">
+            <!-- 1 : planche A4 -->
+            <div class="scene sc-print on" data-i="0">
+              <div class="a4">
+                <div class="a4-head"><b>Nokk · Caserne de Caluire</b><small>Planche de 20 QR · Secteur 12</small></div>
+                <div class="a4-grid" id="a4-grid"></div>
+              </div>
+              <div class="scene-copy">
+                <h3>Une planche, 20 QR uniques</h3>
+                <p>Imprimez depuis l'app une feuille A4 : chaque QR est lié à votre secteur. Découpez, glissez-en un dans la boîte aux lettres de ceux qui n'ont pas ouvert.</p>
+                <div class="mailbox" aria-hidden="true"><span class="slot"></span><span class="qr-slip"></span></div>
+              </div>
+            </div>
+
+            <!-- 2 : l'habitant -->
+            <div class="scene sc-scan" data-i="1">
+              <div class="phone resident">
+                <div class="screen">
+                  <div class="res">
+                    <div class="res-head">
+                      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
+                      <small>Sapeurs-pompiers de Caluire</small>
+                    </div>
+                    <b class="res-title">Nous sommes passés pour le calendrier 2027.</b>
+                    <p class="res-q">Voulez-vous qu'on repasse ?</p>
+                    <div class="res-yn"><span class="on">Oui, repassez</span><span>Non merci</span></div>
+                    <small class="res-l">Quel jour ?</small>
+                    <div class="res-days"><span>Lun<b>16</b></span><span class="on">Mar<b>17</b></span><span>Mer<b>18</b></span><span>Sam<b>21</b></span></div>
+                    <small class="res-l">Quel créneau ?</small>
+                    <div class="res-slots"><span>17 h – 18 h</span><span class="on">18 h – 19 h</span><span>19 h – 20 h</span></div>
+                    <div class="res-mail">＋ Ajouter à mon agenda</div>
+                    <span class="res-ok">Confirmer le passage</span>
+                  </div>
+                </div>
+              </div>
+              <div class="scene-copy">
+                <h3>Il choisit son créneau, comme une livraison</h3>
+                <p>Le QR ouvre une page aux couleurs de votre caserne : « Voulez-vous qu'on repasse ? ». Jour, créneau, et il l'ajoute à son agenda en un geste. Aucun compte à créer.</p>
+              </div>
+            </div>
+
+            <!-- 3 : la tournée de rattrapage -->
+            <div class="scene sc-route" data-i="2">
+              <div class="phone resident">
+                <div class="screen">
+                  <div class="catch">
+                    <svg viewBox="0 0 280 330" aria-hidden="true">
+                      <rect width="280" height="330" fill="var(--map-bg)"/>
+                      <g stroke="var(--map-road)" stroke-width="12" fill="none" stroke-linecap="round"><path d="M-10 80 H290 M-10 190 H290 M-10 290 H290 M70 -10 V340 M190 -10 V340"/></g>
+                      <path class="catch-route" d="M30 80 H190 V190 H70 V290 H230" fill="none" stroke="var(--st-repasser)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 9"/>
+                      <g class="catch-pins">
+                        <g transform="translate(120 80)"><circle r="11" fill="var(--st-repasser)"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree,sans-serif">1</text></g>
+                        <g transform="translate(190 150)"><circle r="11" fill="var(--st-repasser)"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree,sans-serif">2</text></g>
+                        <g transform="translate(110 190)"><circle r="11" fill="var(--st-live)"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree,sans-serif">3</text></g>
+                        <g transform="translate(170 290)"><circle r="11" fill="var(--st-repasser)"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree,sans-serif">4</text></g>
+                      </g>
+                    </svg>
+                    <div class="catch-sheet">
+                      <i class="grab"></i>
+                      <small class="eyebrow">Tournée de rattrapage · mardi</small>
+                      <div class="cs"><em>18 h</em><span><b>12 rue Pasteur</b><small>Bât. B · 3e gauche</small></span></div>
+                      <div class="cs new"><em>18 h</em><span><b>4 av. Foch</b><small>Demandé il y a 2 min</small></span><i>Nouveau</i></div>
+                      <div class="cs"><em>19 h</em><span><b>27 bd Gambetta</b><small>Ajouté à son agenda</small></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="scene-copy">
+                <h3>La demande arrive sur votre carte</h3>
+                <p>Chaque demande apparaît sur la carte du binôme, triée par créneau. Nokk voit les bâtiments et les rues où il y a du monde à revoir et construit la tournée de rattrapage. Vous ne frappez plus dans le vide.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ HORS LIGNE (bande sombre) ============ -->
+    <section class="offline-band">
+      <div class="wrap off-grid">
+        <div>
+          <p class="kicker light reveal">Hors ligne</p>
+          <h2 class="h2 reveal">Pas de réseau dans la cage d'escalier ? <span class="hl2">Rien ne se perd.</span></h2>
+          <p class="lead reveal">Nokk est conçue pour marcher sans connexion. Toutes vos saisies restent sur le téléphone et repartent toutes seules dès que le réseau revient, sans doublon. Installée comme une vraie app, sans passer par un store.</p>
+        </div>
+        <div class="off-demo reveal" aria-hidden="true">
+          <div class="off-line"><span class="dot-off"></span><b>Hors ligne</b><em>tout est gardé</em></div>
+          <div class="off-items">
+            <span style="--i:0">14 rue Pasteur · 20 €</span>
+            <span style="--i:1">16 rue Pasteur · Absent</span>
+            <span style="--i:2">18 rue Pasteur · 10 €</span>
+          </div>
+          <div class="off-sync"><span class="spin"></span><b>Réseau retrouvé</b><em>3 saisies envoyées ✓</em></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BIENTÔT ============ -->
+    <section class="soon section">
+      <div class="wrap">
+        <p class="kicker reveal">Bientôt disponible</p>
+        <h2 class="h2 reveal">Ce qui arrive ensuite.</h2>
+        <div class="soon-grid">
+          <article class="soon-card reveal">
+            <span class="tag">Bientôt</span>
+            <div class="soon-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="10" y="4" width="28" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><rect x="15" y="10" width="18" height="10" rx="2" fill="currentColor" opacity=".25"/><g fill="currentColor"><circle cx="18" cy="27" r="2"/><circle cx="24" cy="27" r="2"/><circle cx="30" cy="27" r="2"/><circle cx="18" cy="33" r="2"/><circle cx="24" cy="33" r="2"/><circle cx="30" cy="33" r="2"/></g></svg></div>
+            <h3>Paiement par carte SumUp</h3>
+            <p>Le terminal SumUp de votre amicale relié à Nokk : le don par carte s'enregistre tout seul sur la bonne porte, sans ressaisie. En attente de leur feu vert.</p>
+          </article>
+          <article class="soon-card reveal">
+            <span class="tag">En validation</span>
+            <div class="soon-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M8 6h32v36l-5-3-5 3-6-3-6 3-5-3-5 3z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 16h18M15 23h18M15 30h10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></div>
+            <h3>Bons de contrôle numériques</h3>
+            <p>Le reçu remis à l'habitant reste en papier. La souche du pompier et celle de la caserne passent dans Nokk : le montant saisi à la porte est rapproché de la caisse, automatiquement. Le contrôle devient instantané.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GRATUIT ============ -->
+    <section class="free section">
+      <div class="wrap free-grid">
+        <div class="free-price reveal">
+          <span class="free-zero">0<sup>€</sup></span>
+          <span class="free-sub">toute cette saison,<br/>pour toutes les casernes</span>
+        </div>
+        <div class="free-copy">
+          <h2 class="h2 reveal">Gratuit toute cette saison.</h2>
+          <p class="lead reveal">Nokk se lance avec de vraies équipes. Cette saison, tout est offert : pas de carte bancaire, pas d'engagement, toutes les fonctionnalités. On vous demande seulement <a href="#avis" data-feedback>vos retours</a>, et d'en parler autour de vous.</p>
+          <p class="plans-intro reveal">Ensuite, deux formules simples :</p>
+          <div class="plans reveal">
+            <div class="plan"><span class="plan-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><b>Formule pompier</b><span>Un pompier prend Nokk pour lui et son binôme, pour la saison.</span></div>
+            <div class="plan"><span class="plan-ico red" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><b>Formule caserne</b><span>L'amicale abonne toute la caserne : espace chef, équipe et secteurs illimités.</span></div>
+          </div>
+          <p class="plans-note reveal">Les prix seront annoncés avant la saison prochaine.</p>
+          <div class="hero-ctas reveal"><a class="btn primary lg" data-app href="../">Créer ma caserne</a><a class="btn ghost lg" data-app="demo" href="../#demo">Voir la démo</a></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PARTAGER ============ -->
+    <section class="share section" id="partager">
+      <div class="wrap">
+        <div class="share-card reveal">
+          <div class="share-copy">
+            <p class="kicker">Faire connaître Nokk</p>
+            <h2 class="h2">« C'est quoi ton appli ? »<br/>Envoyez-leur ce lien.</h2>
+            <p class="lead">Un collègue d'une autre caserne vous pose la question ? Mettez votre prénom : il verra que ça vient de vous.</p>
+            <form class="share-form" id="share-form" autocomplete="off">
+              <label><span>Votre prénom</span><input id="sh-name" name="de" maxlength="30" placeholder="Marceau" /></label>
+              <label><span>Votre caserne</span><input id="sh-cs" name="c" maxlength="40" placeholder="Caluire-et-Cuire" /></label>
+            </form>
+            <div class="share-link"><code id="sh-url">u8tscared.github.io/nokk/decouvrir/</code><button type="button" class="btn dark sm" id="sh-copy">Copier</button></div>
+            <div class="share-btns">
+              <a class="sbtn wa" id="sh-wa" target="_blank" rel="noopener" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>WhatsApp</a>
+              <a class="sbtn" id="sh-sms" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>SMS</a>
+              <a class="sbtn" id="sh-mail" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 6l9 7 9-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>E-mail</a>
+              <button class="sbtn" type="button" id="sh-native" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Partager</button>
+            </div>
+          </div>
+          <div class="share-qr">
+            <div class="qr-frame"><div id="sh-qr" class="qr"></div><span class="qr-logo" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg></span></div>
+            <p>Faites-le scanner à la caserne,<br/>ou imprimez-le pour le tableau d'affichage.</p>
+            <button type="button" class="btn soft sm" id="sh-dl">Télécharger le QR</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="faq section" id="faq">
+      <div class="wrap faq-grid">
+        <div>
+          <p class="kicker reveal">Questions</p>
+          <h2 class="h2 reveal">Ce qu'on nous demande le plus.</h2>
+        </div>
+        <div class="faq-list">
+          <details class="reveal"><summary>C'est gratuit ?</summary><p>Oui, toute cette saison, pour toutes les casernes et amicales, sans carte bancaire ni engagement. Ensuite il y aura deux formules : une formule pompier, pour la saison, et une formule caserne, que l'amicale prend pour toute l'équipe. Les prix seront annoncés avant la saison prochaine.</p></details>
+          <details class="reveal"><summary>Il faut installer quelque chose ?</summary><p>Non, Nokk s'ouvre dans le navigateur. Pour l'avoir comme une app : sur iPhone, Safari puis Partager puis « Sur l'écran d'accueil » ; sur Android, Chrome puis « Installer l'application ».</p></details>
+          <details class="reveal"><summary>Et sans réseau ?</summary><p>Tout marche hors ligne : la carte déjà vue, les portes, la caisse. Les saisies partent dès que le téléphone retrouve du réseau.</p></details>
+          <details class="reveal"><summary>Nos anciens plans papier, on les garde ?</summary><p>Prenez-les en photo : Nokk en fait des secteurs sur la vraie carte. Vous pouvez aussi tracer à la main ou coller une liste d'adresses. Et réimprimer chaque secteur en PDF avec la liste des rues.</p></details>
+          <details class="reveal"><summary>On garde le reçu papier pour l'habitant ?</summary><p>Oui, le reçu remis à l'habitant reste. Nokk digitalise ce qui se passe derrière : les comptes, la caisse, les remises au trésorier. Les bons de contrôle numériques arrivent bientôt.</p></details>
+          <details class="reveal"><summary>Qui voit les données ?</summary><p>Seule votre caserne. Les pompiers voient leurs secteurs, le chef et le trésorier voient l'ensemble. Les données de l'habitant qui demande un passage ne servent qu'à ce passage.</p></details>
+          <details class="reveal"><summary>On peut essayer sans rien créer ?</summary><p>Oui : le bouton « Essayer la démo » ouvre une vraie tournée avec une équipe de six. Rien n'est enregistré.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CTA FINAL ============ -->
+    <section class="final">
+      <div class="wrap final-inner">
+        <svg class="final-logo" width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path class="corner" d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
+        <h2 class="h2 reveal">Cette année, la tournée tient dans la poche.</h2>
+        <div class="hero-ctas center reveal"><a class="btn primary lg" data-app="demo" href="../#demo">Essayer la démo</a><a class="btn light lg" data-app href="../">Créer ma caserne</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <a class="brand" href="#top"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg><span class="wordmark sm">nokk</span></a>
+      <nav><a data-app href="../">Ouvrir l'app</a><a href="#partager">Partager</a><a href="#faq">Questions</a><a href="#avis" data-feedback>Donner mon avis</a></nav>
+    </div>
+  </footer>
+
+  <button class="fb-fab" type="button" data-feedback aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+    <span>Donner mon avis</span>
+  </button>
+
+  <dialog class="fb" id="feedback" aria-labelledby="fb-title">
+    <form class="fb-card" id="fb-form" method="dialog" novalidate>
+      <button class="fb-x" type="button" value="close" aria-label="Fermer">×</button>
+      <div class="fb-step" data-step="form">
+        <p class="kicker">Votre avis compte</p>
+        <h2 id="fb-title">Dites-nous tout.</h2>
+        <p class="fb-sub">Nokk se construit avec les pompiers qui l'utilisent. Chaque message est lu.</p>
+        <fieldset class="fb-kinds">
+          <legend>C'est plutôt…</legend>
+          <label><input type="radio" name="kind" value="idee" checked /><span><i>💡</i>Une idée</span></label>
+          <label><input type="radio" name="kind" value="bug" /><span><i>🛠️</i>Un souci</span></label>
+          <label><input type="radio" name="kind" value="bravo" /><span><i>👏</i>Un bravo</span></label>
+        </fieldset>
+        <fieldset class="fb-stars">
+          <legend>Votre note pour Nokk <small>(facultatif)</small></legend>
+          <div class="stars" role="radiogroup">
+            <label><input type="radio" name="note" value="5" /><span aria-label="5 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="4" /><span aria-label="4 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="3" /><span aria-label="3 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="2" /><span aria-label="2 sur 5">★</span></label>
+            <label><input type="radio" name="note" value="1" /><span aria-label="1 sur 5">★</span></label>
+          </div>
+        </fieldset>
+        <label class="fb-field"><span>Votre message</span>
+          <textarea name="message" id="fb-msg" rows="4" maxlength="2000" placeholder="Ce qui vous plaît, ce qui manque, ce qui coince sur le terrain…" required></textarea>
+        </label>
+        <label class="fb-field"><span>Votre e-mail <small>(facultatif, pour qu'on vous réponde)</small></span>
+          <input type="email" name="contact" maxlength="120" placeholder="prenom@exemple.fr" autocomplete="email" />
+        </label>
+        <p class="fb-err" id="fb-err" role="alert" hidden></p>
+        <button class="btn primary lg fb-send" type="submit" id="fb-send">Envoyer</button>
+      </div>
+      <div class="fb-step fb-done" data-step="done" hidden>
+        <span class="fb-check" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="4"/><path d="M15 27l7 7 15-16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h2>Merci !</h2>
+        <p class="fb-sub">Votre message est bien arrivé. On s'en sert pour améliorer Nokk avant la prochaine tournée.</p>
+        <button class="btn soft lg" type="button" data-close>Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <a class="mobile-cta" data-app="demo" href="../#demo">Essayer la démo</a>
+
+  <script src="qrcode.min.js" defer></script>
+  <script src="landing.js" defer></script>
+</body>
+</html>
