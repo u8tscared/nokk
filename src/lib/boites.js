@@ -12,7 +12,7 @@ export async function readMailboxPhoto(image, { signal } = {}) {
     throw Object.assign(new Error('network'), { code: 'network' });
   }
   const j = await r.json().catch(() => null);
-  if (!r.ok) throw Object.assign(new Error(j?.error || 'boites'), { code: r.status === 404 ? 'soon' : j?.error || 'error' });
+  if (!r.ok) throw Object.assign(new Error(j?.error || 'boites'), { code: r.status === 404 || r.status === 401 ? 'soon' : j?.error || 'error' });
   return (j?.boites || []).map((b) => ({ name: b.nom, floor: parseFloor(b.etage), unit: b.porte || undefined }));
 }
 
