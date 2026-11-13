@@ -51,6 +51,11 @@ function SectorCard({ s }) {
           <span class="big-num" style={{ fontSize: 20 }}>{formatEuro(st.amount)}</span>
         </div>
       </button>
+      {st.repasse > 0 && (
+        <button type="button" class="sector-repasse" onClick={() => { feel('tap'); setCurrentSector(s.id); repasserMode.value = true; go('carte'); setTimeout(() => fitSector(s), 200); }} data-testid={'repasse-' + s.id}>
+          <Icon name="repeat" size={18} /> Repasser chez les absents · {st.repasse}
+        </button>
+      )}
       <IconButton icon="more" label={'Options du ' + s.name} class="flat sector-more" onClick={() => openSheet(({ close }) => <SectorOptions s={s} close={close} />, { label: s.name })} />
     </div>
   );

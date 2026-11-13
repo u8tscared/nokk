@@ -147,3 +147,28 @@ test('maison : un don déjà saisi se corrige depuis la porte', async ({ page })
   expect(v).toBe(10);
   expect(errors).toEqual([]);
 });
+
+test('mode repasse : un toucher sur la carte, Nokk n\'emmène que chez les absents', async ({ page }, info) => {
+  const errors = await startDemo(page);
+  const sw = page.locator('[data-testid=mode-switch]:visible');
+  await expect(sw).toBeVisible();
+  await sw.getByTestId('mode-repasse').click();
+  await expect(page.locator('[data-testid=repasse-hint]:visible')).toBeVisible();
+  const next = page.locator('[data-testid=next-door]:visible');
+  await expect(next).toContainText('Absent à revoir');
+  if (info.project.name === 'telephone') { await page.waitForTimeout(600); await page.screenshot({ path: test.info().outputPath('mode-repasse.png') }); }
+  await next.click();
+  const st = await page.evaluate(() => {
+    const { store } = window.__nokk;
+    const h2 = document.querySelector('.stop-head h2').textContent;
+    const d = store.data.value.doors.find((x) => x.num + ' ' + x.street === h2);
+    const vs = store.data.value.visits.filter((v) => v.doorId === d.id);
+    return vs.some((v) => v.result === 'absent');
+  });
+  expect(st).toBe(true);
+  // Depuis l'écran Secteurs aussi.
+  await page.keyboard.press('Escape');
+  await sw.getByTestId('mode-tournee').click();
+  await expect(next).toContainText('Porte suivante');
+  expect(errors).toEqual([]);
+});
