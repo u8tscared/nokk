@@ -670,3 +670,7 @@ label.btn { cursor: pointer; }
 .floor-badge.big { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 70px; height: 52px; }
 .floor-badge.big .fb-v { line-height: 1; }
 .floor-badge.big .fb-edit { display: inline-flex; align-items: center; gap: 2px; font-family: var(--f); font-size: 10.5px; font-weight: 750; opacity: 0.85; }
+.prev-bar { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 12px; background: var(--well); font-size: 13.5px; font-weight: 650; text-align: left; color: var(--ink-2); }
+.prev-bar b { color: var(--ink); }
+.prev-bar .tiny { color: var(--accent-ink); font-weight: 800; }
+.prev-bar:active { transform: scale(0.98); }

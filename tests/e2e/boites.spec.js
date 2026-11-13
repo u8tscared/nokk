@@ -55,6 +55,11 @@ test('photo des boîtes : noms et étages pré-remplis, corrigés à la main, pu
   for (const k of ['0', ',', '1']) await sheet.locator('.numpad button', { hasText: new RegExp('^' + (k === ',' ? ',' : k) + '$') }).click();
   await page.getByTestId('validate').click();
   await expect(sheet.getByTestId('ask-name')).toHaveValue('Mme Leroy');
+  // On peut revenir au précédent pour le corriger.
+  await expect(sheet.getByTestId('prev-fix')).toContainText('Martins');
+  await sheet.getByTestId('prev-fix').click();
+  await expect(page.getByTestId('edit-amount')).toHaveValue('0,10');
+  await page.getByTestId('visit-save').click();
   // Calendrier offert.
   await sheet.getByTestId('yes').click();
   await sheet.getByTestId('amount-free').click();
