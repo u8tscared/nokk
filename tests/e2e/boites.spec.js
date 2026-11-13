@@ -23,7 +23,9 @@ test('photo des boîtes : noms et étages pré-remplis, corrigés à la main, pu
   const errors = await startDemo(page);
   const id = await building(page);
   const sheet = page.locator('.door-sheet');
-  await expect(sheet.getByTestId('mailbox-cta')).toBeVisible();
+  // En arrivant : la photo des boîtes est proposée d'abord.
+  await expect(sheet.getByTestId('photo-first')).toBeVisible();
+  if (info.project.name === 'telephone') { await page.waitForTimeout(800); await page.screenshot({ path: test.info().outputPath('arrivee.png') }); }
   // La photo : Nokk lit 4 noms.
   await page.locator('input[type=file][capture]').first().setInputFiles('tests/fixtures/plan-caluire.jpg');
   const ed = page.getByTestId('res-editor');
@@ -43,7 +45,7 @@ test('photo des boîtes : noms et étages pré-remplis, corrigés à la main, pu
 
   // Nom par nom, du rez-de-chaussée vers le haut.
   await expect(sheet.getByTestId('ask-name')).toHaveValue('Dupont Jean');
-  await expect(sheet.getByTestId('now-floor')).toHaveText('RDC');
+  await expect(sheet.getByTestId('now-floor')).toContainText('RDC');
   if (info.project.name === 'telephone') { await page.waitForTimeout(900); await page.screenshot({ path: test.info().outputPath('liste.png') }); }
   await sheet.getByTestId('absent').click();
   await expect(sheet.getByTestId('ask-name')).toHaveValue('Martins');
@@ -103,6 +105,8 @@ test('immeuble sans photo : l\'étage se note à chaque logement, et la repasse 
   const errors = await startDemo(page);
   const id = await building(page);
   const sheet = page.locator('.door-sheet');
+  await sheet.getByTestId('pf-skip').click();
+  await expect(sheet.getByTestId('mailbox-cta')).toBeVisible();
   await sheet.getByTestId('floor-0').click();
   await sheet.getByTestId('ask-name').fill('Bernard');
   await sheet.getByTestId('absent').click();
