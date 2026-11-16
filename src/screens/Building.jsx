@@ -5,7 +5,6 @@ import { Button, IconButton, Seg, Field, toast, Bump } from '../ui/ui.jsx';
 import { data, byDoor, updateDoor, demo } from '../lib/store.js';
 import { formatEuro, flatsOf, doorState } from '../lib/model.js';
 import { residentStates, byFloor, floorShort, floorLabel, floorRank, makeResident, mergeResidents, sortResidents, recapText, isOpen, passCount, parseFloor } from '../lib/residents.js';
-import { merge3 } from '../lib/merge.js';
 import { readMailboxPhoto, PHOTO_ERRORS } from '../lib/boites.js';
 import { openSheet } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
@@ -165,8 +164,6 @@ export function openResidents(door, opts = {}) {
 function ResidentsEditor({ doorId, file, close }) {
   const door = data.value.doors.find((d) => d.id === doorId);
   const [rows, setRows] = useState(() => sortResidents(door?.residents || []).map((r) => ({ ...r })));
-  // Liste au moment d'ouvrir : si un équipier ajoute des noms pendant ce temps, on les garde à l'enregistrement.
-  const [start] = useState(() => door?.residents || []);
   const [flats, setFlats] = useState(() => (door ? flatsOf(door) : 2));
   const [flatsTouched, setFlatsTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -214,13 +211,10 @@ function ResidentsEditor({ doorId, file, close }) {
   function save() {
     const clean = rows.map((r) => ({ id: r.id, name: (r.name || '').trim(), floor: r.floor ?? null, ...(String(r.unit || '').trim() ? { unit: String(r.unit).trim() } : {}) }))
       .filter((r) => r.name || r.unit || visited.has(r.id));
-    const now = data.value.doors.find((d) => d.id === doorId)?.residents || [];
-    const list = merge3(start, clean, now);
-    const n = Math.max(2, flats, list.length);
-    updateDoor(doorId, { residents: list, residentsSet: true, flats: n, flatsSet: true });
+    const n = Math.max(2, flats, clean.length);
+    updateDoor(doorId, { residents: clean, residentsSet: true, flats: n, flatsSet: true });
     feel('ok');
-    const extra = list.length - clean.length;
-    toast(`${list.length} habitant${list.length > 1 ? 's' : ''} · ${n} logements${extra > 0 ? ` (dont ${extra} ajouté${extra > 1 ? 's' : ''} par un équipier)` : ''}`);
+    toast(`${clean.length} habitant${clean.length > 1 ? 's' : ''} · ${n} logements`);
     close();
   }
   const setPickedFloor = (f) => { setRows((rs) => rs.map((r) => (picked.has(r.id) ? { ...r, floor: f } : r))); feel('ok'); toast(`${picked.size} mis au ${floorShort(f)}`); setPicked(new Set()); setBulk(false); };
