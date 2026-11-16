@@ -117,6 +117,7 @@ export async function buildDemo(now = Date.now()) {
       doors.push({
         ...d,
         flats,
+        ...(flats > 1 ? { flatsSet: true } : {}),
         id: id + '-' + d.id,
         sectorId: id,
         lastYear: r < 0.62 ? { amount: [500, 1000, 1000, 1000, 1500, 1500, 2000, 2000, 3000][Math.floor(rand() * 9)] } : null,
