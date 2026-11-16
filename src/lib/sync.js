@@ -4,20 +4,13 @@
 // Principe : on compare les éléments de `data` par référence (les actions du store créent un nouvel objet
 // à chaque changement). Ce qui a changé est noté « en attente » (clé + heure) et gardé sur l'appareil
 // jusqu'à ce que le serveur l'ait reçu. Le contenu envoyé est toujours la version la plus récente.
-//
-// Saisies simultanées (plusieurs binômes sur le même secteur, le même immeuble) : chaque envoi dit sur quelle
-// version du serveur il a été fait (b). Si un équipier a écrit entre-temps, le serveur refuse et renvoie sa
-// version ; ce téléphone fusionne les deux (merge.js : champ par champ, habitants par identifiant) et renvoie.
-// Rien n'est écrasé : deux noms ajoutés en même temps dans le même immeuble restent tous les deux.
 import { signal, effect } from '@preact/signals';
 import { data, demo, online, setData } from './store.js';
 import { api } from './api.js';
-import { merge3, same } from './merge.js';
 
 export const KINDS = ['members', 'sectors', 'doors', 'visits', 'handovers', 'stock', 'sessions', 'callbacks'];
 const PKEY = 'nokk:pending:v1';
 const CKEY = 'nokk:sync:v1';
-const SKEY = 'nokk:seq:v1';
 const BATCH = 300;
 
 // status : off | idle | syncing | offline | error
@@ -28,8 +21,7 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 
 let teamId = null;
 let shadow = null; // { org, members: Map, … }
-let pending = { team: null, items: {} }; // 'kind|id' -> { u, x, b: version serveur de départ, o: contenu de départ }
-let seqs = { team: null, m: {} }; // 'kind|id' -> numéro de la version du serveur que ce téléphone a
+let pending = { team: null, items: {} }; // 'kind|id' -> { u, x }
 let cursors = read(CKEY) || {};
 let timer = 0;
 let poll = 0;
@@ -41,7 +33,7 @@ let waiters = [];
 
 const pendingCount = () => Object.keys(pending.items).length;
 function setState(patch) { syncState.value = { ...syncState.peek(), pending: pendingCount(), ...patch }; }
-function savePending() { write(PKEY, pending); write(SKEY, seqs); setState({}); }
+function savePending() { write(PKEY, pending); setState({}); }
 
 function snapshot(d) {
   const s = { org: d.org || null };
@@ -50,13 +42,7 @@ function snapshot(d) {
 }
 const emptyShadow = () => { const s = { org: null }; for (const k of KINDS) s[k] = new Map(); return s; };
 
-// Note une modification locale. La première fois, on retient la version de départ (pour fusionner plus tard).
-function mark(k, id, del, prev) {
-  const key = k + '|' + id;
-  const p = pending.items[key];
-  if (p) { p.u = Math.max(Date.now(), p.u + 1); p.x = del ? 1 : 0; return; }
-  pending.items[key] = { u: Date.now(), x: del ? 1 : 0, b: seqs.m[key] || 0, o: prev === undefined ? null : prev };
-}
+function mark(k, id, del) { pending.items[k + '|' + id] = { u: Date.now(), x: del ? 1 : 0 }; }
 
 // Compare l'état courant à la dernière version connue et note les différences.
 export function diff(d, opts = {}) {
@@ -69,62 +55,46 @@ export function diff(d, opts = {}) {
     for (const x of d[k] || []) {
       if (!x || !x.id) continue;
       next.set(x.id, x);
-      if (prev.get(x.id) !== x) { mark(k, x.id, false, prev.get(x.id)); n++; }
+      if (prev.get(x.id) !== x) { mark(k, x.id, false); n++; }
     }
     for (const id of prev.keys()) if (!next.has(id)) { mark(k, id, true); n++; }
     shadow[k] = next;
   }
   if ((d.org || null) !== shadow.org) {
-    if (d.org && !opts.skipOrg) { mark('org', 'org', false, shadow.org || undefined); n++; }
+    if (d.org && !opts.skipOrg) { mark('org', 'org', false); n++; }
     shadow.org = d.org || null;
   }
   if (n || pendingCount() !== before) { savePending(); schedule(1200); }
   return n;
 }
 
-// Applique ce qui vient du serveur sans le renvoyer. Si ce téléphone a une saisie en attente sur le même
-// élément, les deux sont fusionnées : la fusion reste en attente et repart, basée sur la version reçue.
-// `force` : versions renvoyées parce que notre envoi a été refusé (toujours à fusionner).
-export function applyRemote(items, { force = false } = {}) {
+const same = (a, b) => { try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; } };
+
+// Applique ce qui vient du serveur sans le renvoyer. Une saisie locale plus récente reste prioritaire.
+export function applyRemote(items) {
   if (!items.length || !shadow) return 0;
   const d = data.value;
   const maps = {};
   let org = d.org || null;
   let orgChanged = false;
   let n = 0;
-  const get = (k, id) => (k === 'org' ? org || undefined : (maps[k] ||= new Map((d[k] || []).filter((x) => x && x.id).map((x) => [x.id, x]))).get(id));
-  const put = (k, id, v) => {
-    if (k === 'org') { const nv = v === undefined ? org : v; if (!same(nv, org)) { org = nv; orgChanged = true; n++; } return; }
-    get(k, id);
-    const m = maps[k];
-    if (v === undefined) { if (m.delete(id)) n++; return; }
-    const cur = m.get(id);
-    if (cur && same(cur, v)) return;
-    m.set(id, v);
-    n++;
-  };
   for (const it of items) {
-    if (it.k !== 'org' && !KINDS.includes(it.k)) continue;
     const key = it.k + '|' + it.i;
     const p = pending.items[key];
-    const s = Number.isFinite(it.s) ? it.s : null;
-    if (p) {
-      if (!force && s != null && s <= (p.b || 0)) continue; // déjà pris en compte
-      if (it.x) { delete pending.items[key]; if (s != null) seqs.m[key] = s; put(it.k, it.i, undefined); continue; } // supprimé ailleurs
-      if (s != null) p.b = s;
-      const local = p.x ? undefined : get(it.k, it.i);
-      if (local === undefined) continue; // supprimé ici : la suppression repart
-      const merged = merge3(p.o == null ? undefined : p.o, local, it.d);
-      if (s != null) seqs.m[key] = s;
-      if (same(merged, it.d)) { delete pending.items[key]; put(it.k, it.i, it.d); continue; }
-      p.o = it.d;
-      p.u = Math.max(Date.now(), p.u + 1);
-      put(it.k, it.i, merged);
+    if (p && p.u > it.u) continue;
+    if (p) delete pending.items[key];
+    if (it.k === 'org') {
+      const v = it.x ? org : it.d;
+      if (!same(v, org)) { org = v; orgChanged = true; n++; }
       continue;
     }
-    if (!force && s != null && seqs.m[key] && s < seqs.m[key]) continue; // plus ancien que ce qu'on a
-    if (s != null) seqs.m[key] = s;
-    put(it.k, it.i, it.x ? undefined : it.d);
+    if (!KINDS.includes(it.k)) continue;
+    const m = (maps[it.k] ||= new Map((d[it.k] || []).filter((x) => x && x.id).map((x) => [x.id, x])));
+    if (it.x) { if (m.delete(it.i)) n++; continue; }
+    const cur = m.get(it.i);
+    if (cur && same(cur, it.d)) continue;
+    m.set(it.i, it.d);
+    n++;
   }
   if (!n) { savePending(); return 0; }
   const out = { ...d };
@@ -169,23 +139,15 @@ export async function flush() {
           obj = idx[k].get(id);
         }
         if (p.x || !obj) changes.push({ k, i: id, x: true, u: p.u });
-        else changes.push({ k, i: id, d: obj, u: p.u, b: p.b || 0 });
+        else changes.push({ k, i: id, d: obj, u: p.u });
       }
       const res = await api('/sync', { method: 'POST', body: { teamId, since: cursors[teamId] || 0, changes } });
-      const acc = res.acc; // absent : ancien serveur, tout est accepté
       for (const c of changes) {
         const key = c.k + '|' + c.i;
-        if (acc && !(key in acc)) continue; // refusé : un équipier a écrit avant, sa version est dans fix
-        const s = acc ? acc[key] : null;
-        if (s) seqs.m[key] = s;
-        const p = pending.items[key];
-        if (!p) continue;
-        if (p.u === c.u) delete pending.items[key];
-        else if (s) { p.b = s; p.o = c.d ?? null; } // modifié pendant l'envoi : la suite part de ce qu'on vient d'écrire
+        if (pending.items[key]?.u === c.u) delete pending.items[key];
       }
       savePending();
-      if (res.fix?.length) applyRemote(res.fix, { force: true });
-      applyRemote(res.items || []);
+      applyRemote([...(res.fix || []), ...(res.items || [])]);
       cursors[teamId] = res.cursor;
       write(CKEY, cursors);
       if (!res.more && !pendingCount()) break;
@@ -215,9 +177,6 @@ export function startSync(id, { upload = false, skipOrg = false } = {}) {
   teamId = id;
   const saved = read(PKEY);
   pending = saved && saved.team === id ? saved : { team: id, items: {} };
-  for (const p of Object.values(pending.items)) { if (p.b == null) p.b = 0; if (p.o === undefined) p.o = null; } // saisies d'avant la mise à jour
-  const sq = read(SKEY);
-  seqs = !upload && sq && sq.team === id && sq.m ? sq : { team: id, m: {} };
   shadow = upload ? emptyShadow() : snapshot(data.value);
   if (upload) diff(data.value, { skipOrg });
   stopEffect = effect(() => {
@@ -246,9 +205,8 @@ export function hasCursor(id) { return !!cursors[id]; }
 export function forgetSync() {
   stopSync();
   pending = { team: null, items: {} };
-  seqs = { team: null, m: {} };
   cursors = {};
-  try { localStorage.removeItem(PKEY); localStorage.removeItem(CKEY); localStorage.removeItem(SKEY); } catch {}
+  try { localStorage.removeItem(PKEY); localStorage.removeItem(CKEY); } catch {}
   setState({ pending: 0, last: 0 });
 }
 
