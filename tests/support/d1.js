@@ -4,22 +4,25 @@ import { createRequire } from 'node:module';
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
-export function d1() {
+// jitter : chaque requête attend un peu au hasard, comme le réseau entre le Worker et D1 (les requêtes de
+// plusieurs téléphones s'entremêlent alors vraiment).
+export function d1({ jitter = 0 } = {}) {
   const db = new DatabaseSync(':memory:');
+  const wait = () => (jitter ? new Promise((r) => setTimeout(r, Math.random() * jitter)) : null);
   db.exec(readFileSync(new URL('../../worker/schema.sql', import.meta.url), 'utf8'));
   const stmt = (sql, args = []) => ({
     bind: (...a) => stmt(sql, a),
-    first: async () => db.prepare(sql).get(...args) ?? null,
-    all: async () => ({ results: db.prepare(sql).all(...args) }),
-    run: async () => { const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes } }; },
-    _exec: () => db.prepare(sql).run(...args),
+    first: async () => { await wait(); return db.prepare(sql).get(...args) ?? null; },
+    all: async () => { await wait(); return { results: db.prepare(sql).all(...args) }; },
+    run: async () => { await wait(); const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes } }; },
+    _exec: () => ({ results: db.prepare(sql).all(...args) }),
   });
   return {
     prepare: (sql) => stmt(sql),
     batch: async (list) => {
+      await wait();
       db.exec('BEGIN');
-      try { for (const s of list) s._exec(); db.exec('COMMIT'); } catch (e) { db.exec('ROLLBACK'); throw e; }
-      return [];
+      try { const out = list.map((s) => s._exec()); db.exec('COMMIT'); return out; } catch (e) { db.exec('ROLLBACK'); throw e; }
     },
   };
 }
