@@ -151,46 +151,69 @@ function cleanChanges(list, now) {
     const del = !!c.x;
     if (!del && (c.d == null || typeof c.d !== 'object')) throw new HttpError(400, 'bad_change');
     const u = Math.min(Number.isFinite(c.u) ? Math.floor(c.u) : now, now); // une horloge en avance ne gagne pas toujours
+    // b : version du serveur sur laquelle l'appareil a travaillé (0 = élément nouveau). Absent = anciennes versions de l'app.
+    const b = Number.isFinite(c.b) && c.b >= 0 ? Math.floor(c.b) : null;
     const prev = seen.get(c.k + '|' + c.i);
     if (prev && prev.u > u) continue;
-    seen.set(c.k + '|' + c.i, { k: c.k, i: c.i, d: del ? null : JSON.stringify(c.d), u, x: del ? 1 : 0 });
+    seen.set(c.k + '|' + c.i, { k: c.k, i: c.i, d: del ? null : JSON.stringify(c.d), u, x: del ? 1 : 0, b });
   }
   return [...seen.values()];
 }
 const rowOut = (r) => ({ k: r.kind, i: r.id, d: r.deleted ? null : JSON.parse(r.data), u: r.updated_at, x: !!r.deleted, s: r.seq });
 
+// Écriture concurrente sûre : une modification n'est acceptée que si elle part de la version actuelle du serveur
+// (b = seq connu). Sinon l'appareil reçoit la version actuelle, fusionne les deux saisies et renvoie.
+// Les suppressions passent toujours. Tout se fait dans une seule transaction : un autre téléphone qui lit
+// en même temps ne peut pas sauter des numéros pas encore écrits.
 async function sync(env, user, b) {
   const teamId = b.teamId;
   await membership(env, teamId, user.uid);
   const since = Math.max(0, Math.floor(+b.since || 0));
   const changes = cleanChanges(b.changes || [], Date.now());
   let fix = [];
+  let acc = {};
   if (changes.length) {
     const n = changes.length;
-    const row = await env.DB.prepare('UPDATE teams SET seq = seq + ?2 WHERE id = ?1 RETURNING seq').bind(teamId, n).first();
-    const base = row.seq - n;
     const payload = JSON.stringify(changes);
-    await env.DB.prepare(
-      `INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by)
-       SELECT ?1, json_extract(value, '$.k'), json_extract(value, '$.i'), json_extract(value, '$.d'), json_extract(value, '$.u'), ?2 + key + 1, json_extract(value, '$.x'), ?3
-       FROM json_each(?4) WHERE 1
-       ON CONFLICT(team_id, kind, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, seq = excluded.seq, deleted = excluded.deleted, by = excluded.by
-       WHERE excluded.updated_at >= items.updated_at`,
-    ).bind(teamId, base, user.uid, payload).run();
-    // Modifications refusées (une version plus récente existe) : on renvoie la version du serveur.
     const keys = JSON.stringify(changes.map((c) => c.k + '|' + c.i));
-    const r = await env.DB.prepare(
-      `SELECT kind, id, data, updated_at, seq, deleted FROM items
-       WHERE team_id = ?1 AND (kind || '|' || id) IN (SELECT value FROM json_each(?2)) AND (seq <= ?3 OR seq > ?4)`,
-    ).bind(teamId, keys, base, base + n).all();
-    fix = r.results.map(rowOut);
+    const base = '(SELECT seq FROM teams WHERE id = ?1) - ?4 + key + 1';
+    const cols = `?1, json_extract(value, '$.k'), json_extract(value, '$.i'), json_extract(value, '$.d'), json_extract(value, '$.u'), ${base}, json_extract(value, '$.x'), ?2`;
+    const current = `COALESCE((SELECT CASE WHEN it.deleted THEN 0 ELSE it.seq END FROM items it WHERE it.team_id = ?1 AND it.kind = json_extract(value, '$.k') AND it.id = json_extract(value, '$.i')), 0)`;
+    const upd = 'data = excluded.data, updated_at = excluded.updated_at, seq = excluded.seq, deleted = excluded.deleted, by = excluded.by';
+    const res = await env.DB.batch([
+      env.DB.prepare('UPDATE teams SET seq = seq + ?2 WHERE id = ?1').bind(teamId, n),
+      // Suppressions, et modifications faites sur la dernière version.
+      env.DB.prepare(
+        `INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by)
+         SELECT ${cols} FROM json_each(?3)
+         WHERE json_extract(value, '$.x') = 1 OR (json_extract(value, '$.b') IS NOT NULL AND json_extract(value, '$.b') = ${current})
+         ON CONFLICT(team_id, kind, id) DO UPDATE SET ${upd}`,
+      ).bind(teamId, user.uid, payload, n),
+      // Anciennes versions de l'app : la plus récente gagne.
+      env.DB.prepare(
+        `INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by)
+         SELECT ${cols} FROM json_each(?3)
+         WHERE json_extract(value, '$.x') = 0 AND json_extract(value, '$.b') IS NULL
+         ON CONFLICT(team_id, kind, id) DO UPDATE SET ${upd}
+         WHERE excluded.updated_at >= items.updated_at`,
+      ).bind(teamId, user.uid, payload, n),
+      env.DB.prepare(
+        `SELECT kind, id, data, updated_at, seq, deleted, (SELECT seq FROM teams WHERE id = ?1) AS top FROM items
+         WHERE team_id = ?1 AND (kind || '|' || id) IN (SELECT value FROM json_each(?2))`,
+      ).bind(teamId, keys),
+    ]);
+    for (const r of res[3].results) {
+      // Écrit par cet envoi : on donne son numéro. Sinon (refusé, ou plus récent ailleurs) : la version du serveur.
+      if (r.seq > r.top - n) acc[r.kind + '|' + r.id] = r.seq;
+      else fix.push(rowOut(r));
+    }
   }
   const { results } = await env.DB.prepare('SELECT kind, id, data, updated_at, seq, deleted FROM items WHERE team_id = ?1 AND seq > ?2 ORDER BY seq LIMIT ?3')
     .bind(teamId, since, PAGE + 1).all();
   const more = results.length > PAGE;
   const items = results.slice(0, PAGE).map(rowOut);
   const cursor = items.length ? items[items.length - 1].s : since;
-  return { items, fix, cursor, more, accepted: changes.length };
+  return { items, fix, acc, cursor, more, accepted: Object.keys(acc).length };
 }
 
 async function exportTeam(env, user, teamId) {
@@ -236,8 +259,11 @@ async function qrAnswer(env, token, b) {
   const id = rid('cb_', 8);
   const d = { id, sectorId: sector.id, n: Number.isFinite(n) && n > 0 && n < 1000 ? n : null, want, slot: want === 'oui' ? slot : null,
     name: clip(b.name, 80), address: clip(b.address, 160), email, note: clip(b.note, 300), ts: now, status: 'new' };
-  const row = await env.DB.prepare('UPDATE teams SET seq = seq + 1 WHERE id = ?1 RETURNING seq').bind(teamId).first();
-  await env.DB.prepare("INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by) VALUES (?1, 'callbacks', ?2, ?3, ?4, ?5, 0, 'qr')").bind(teamId, id, JSON.stringify(d), now, row.seq).run();
+  // Une seule transaction : le numéro réservé est écrit avant que quiconque puisse lire la suite.
+  await env.DB.batch([
+    env.DB.prepare('UPDATE teams SET seq = seq + 1 WHERE id = ?1').bind(teamId),
+    env.DB.prepare("INSERT INTO items (team_id, kind, id, data, updated_at, seq, deleted, by) VALUES (?1, 'callbacks', ?2, ?3, ?4, (SELECT seq FROM teams WHERE id = ?1), 0, 'qr')").bind(teamId, id, JSON.stringify(d), now),
+  ]);
   return { ok: true, id };
 }
 

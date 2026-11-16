@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { Icon } from '../ui/icons.jsx';
 import { Button, IconButton, Seg, NumPad, toast, confetti, Bump, Field, shake } from '../ui/ui.jsx';
-import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState, addResident, updateResident } from '../lib/store.js';
+import { data, byDoor, addVisit, removeVisit, updateDoor, position, geoState, addResident, updateResident, memberById } from '../lib/store.js';
 import { doorState, formatEuro, suggestAmount, revisitHint, RESULTS, METHODS, unitsOf, nextUnit, prevUnit, flatsOf } from '../lib/model.js';
 import { doorAfter, stats, whereNext, startGuide, repasserMode } from '../lib/tour.js';
 import { residentStates, nextResident, makeResident, floorShort, residentLabel, passCount } from '../lib/residents.js';
@@ -80,6 +80,8 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   const [sel, setSel] = useState(null); // habitant choisi dans la liste des boîtes (null = nouveau logement)
   const [floor, setFloor] = useState(null); // étage du logement en cours
   const [floorOpen, setFloorOpen] = useState(false);
+  const loaded = useRef({ name: '', floor: null }); // nom et étage tels qu'affichés au départ (pour savoir si l'on a tapé)
+  const seenVisits = useRef(null);
   const bodyRef = useRef();
   const nameRef = useRef();
 
@@ -119,8 +121,10 @@ export function DoorSheet({ doorId: initialId, close, start }) {
   function pickResident(s, dd = door, l = list) {
     if (s) {
       setSel(s.r.id); setName(s.r.name || ''); setFloor(s.r.floor ?? null);
+      loaded.current = { name: s.r.name || '', floor: s.r.floor ?? null };
     } else {
       setSel(null); setName('');
+      loaded.current = { name: '', floor: null };
       // Nouveau logement : même étage que le précédent, on monte souvent étage par étage.
       const lastV = [...l].reverse().find((v) => v.rid && !v.closed);
       const lr = lastV && (dd?.residents || []).find((r) => r.id === lastV.rid);
@@ -146,15 +150,43 @@ export function DoorSheet({ doorId: initialId, close, start }) {
     return { rid: nr.id, unit: nr.unit || nr.name || 'Logt ' + (unitsOf(list).length + 1) };
   }
 
-  // La liste des boîtes vient d'être remplie ou corrigée : on se place sur le premier nom à voir.
+  // La liste des boîtes vient d'être remplie ou corrigée (ici ou par un équipier) : on se place sur le premier nom à voir.
+  // Ce que le pompier est en train de taper n'est jamais remplacé.
   useEffect(() => {
     if (!door || !isBuilding) return;
     const rs = door.residents || [];
     const cur = sel && rs.find((r) => r.id === sel);
-    if (cur) { setName(cur.name || ''); setFloor(cur.floor ?? null); return; }
+    if (cur) {
+      const was = loaded.current;
+      if (name === was.name) setName(cur.name || '');
+      if ((floor ?? null) === was.floor) setFloor(cur.floor ?? null);
+      loaded.current = { name: name === was.name ? cur.name || '' : was.name, floor: (floor ?? null) === was.floor ? cur.floor ?? null : was.floor };
+      return;
+    }
     if (sel || (!name.trim() && door.residentsSet)) pickResident(firstResident(door, list), door, list);
     if (door.residentsSet && step === 'photo') { setMotion('fwd'); setStep('ask'); }
   }, [door?.residents]);
+
+  // Un équipier vient d'enregistrer le logement affiché ici (même immeuble, en même temps) :
+  // si l'on n'a encore rien saisi, on passe au suivant ; sinon on prévient, pour éviter le doublon.
+  useEffect(() => {
+    const ids = new Set(list.map((v) => v.id));
+    const was = seenVisits.current;
+    seenVisits.current = { doorId, ids };
+    if (!was || was.doorId !== doorId || !door || !isBuilding || !sel) return;
+    const mine = new Set(data.value.crew?.length ? data.value.crew : [data.value.meId].filter(Boolean));
+    const fresh = list.filter((v) => !was.ids.has(v.id) && v.rid === sel && !(v.by || []).some((b) => mine.has(b)));
+    if (!fresh.length) return;
+    const who = (fresh[fresh.length - 1].by || []).map((b) => memberById.value.get(b)?.name.split(' ')[0]).filter(Boolean).join(' et ') || 'Un équipier';
+    const r = residents.find((x) => x.id === sel);
+    const label = r?.name || residentLabel(r || {}) || 'ce logement';
+    if (step === 'ask' && name === loaded.current.name && (floor ?? null) === loaded.current.floor) {
+      pickResident(firstResident(door, list, sel), door, list);
+      toast(`${who} vient de noter ${label} · logement suivant`);
+    } else {
+      toast(`${who} vient de noter ${label} : vérifiez avant d'enregistrer`, { error: true });
+    }
+  }, [list.length, doorId]);
 
   if (!door) return <div class="empty"><p>Cette porte n'existe plus.</p></div>;
 
@@ -673,8 +705,18 @@ function EditDoor({ door, close }) {
   const [flats, setFlats] = useState(door.flats || 1);
   const [code, setCode] = useState(door.code || '');
   const [notes, setNotes] = useState(door.notes || '');
+  // Seulement ce qui a changé : rien n'écrase ce qu'un équipier a corrigé entre-temps sur la même porte.
+  function save() {
+    const patch = {};
+    if ((num.trim() || door.num) !== door.num) patch.num = num.trim() || door.num;
+    if (Math.max(1, flats) !== (door.flats || 1)) { patch.flats = Math.max(1, flats); patch.flatsSet = true; }
+    if (code.trim() !== (door.code || '')) patch.code = code.trim();
+    if (notes.trim() !== (door.notes || '')) patch.notes = notes.trim();
+    if (Object.keys(patch).length) updateDoor(door.id, patch);
+    feel('ok'); toast('Porte mise à jour'); close();
+  }
   return (
-    <form class="stack" onSubmit={(e) => { e.preventDefault(); updateDoor(door.id, { num: num.trim() || door.num, flats: Math.max(1, flats), code: code.trim(), notes: notes.trim(), ...(flats !== door.flats ? { flatsSet: true } : {}) }); feel('ok'); toast('Porte mise à jour'); close(); }}>
+    <form class="stack" onSubmit={(e) => { e.preventDefault(); save(); }}>
       <div class="sheet-head"><h2>Modifier la porte</h2></div>
       <Field id="enum" label="Numéro"><input id="enum" class="input" value={num} onInput={(e) => setNum(e.currentTarget.value)} {...inputKinds.text} /></Field>
       <div class="field"><span class="label">C'est…</span>
