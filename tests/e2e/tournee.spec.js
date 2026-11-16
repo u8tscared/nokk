@@ -220,3 +220,22 @@ test('immeuble : corriger à la main le nombre de logements', async ({ page }) =
   expect(await page.evaluate((id) => window.__nokk.store.doorById.value.get(id).flats, id)).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test('immeuble : le nombre de logements de la carte atteint, on reste dans l\'immeuble', async ({ page }) => {
+  const errors = await startDemo(page);
+  const id = await page.evaluate(() => {
+    const s = window.__nokk.store;
+    const d = s.data.value;
+    const b = d.doors.find((x) => x.sectorId === d.currentSectorId && x.flats > 1 && !d.visits.some((v) => v.doorId === x.id));
+    s.updateDoor(b.id, { flats: 2, flatsSet: false });
+    return b.id;
+  });
+  await page.evaluate((id) => window.__nokk.openDoor(id), id);
+  const sheet = page.getByRole('dialog');
+  await sheet.getByTestId('pf-skip').click();
+  for (let i = 0; i < 3; i++) await sheet.locator('.outcome.tone-muted').click();
+  // Trois logements notés alors que la carte en annonçait deux : toujours dans le même immeuble.
+  await expect(sheet.locator('#unit')).toHaveValue('4');
+  expect(await page.evaluate((id) => window.__nokk.store.data.value.visits.filter((v) => v.doorId === id).length, id)).toBe(3);
+  expect(errors).toEqual([]);
+});

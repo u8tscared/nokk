@@ -53,7 +53,9 @@ export function doorState(door, list = []) {
     const done = us.filter((v) => v.result !== 'absent').length;
     const absents = us.length - done;
     const total = flatsOf(door);
-    if (list.some((v) => v.closed) || done >= total) return { state: 'donne', passes: list.length, amount, units: done, absents, closed: true };
+    // Fini quand on le dit (« Immeuble terminé »), ou quand le nombre de logements a été confirmé à la main.
+    // Le nombre venu de la carte (IGN) est souvent trop bas : il ne ferme jamais l'immeuble tout seul.
+    if (list.some((v) => v.closed) || (door.flatsSet && done >= total)) return { state: 'donne', passes: list.length, amount, units: done, absents, closed: true };
     return { state: 'partiel', passes: list.length, amount, units: done, absents };
   }
   const last = list[list.length - 1];

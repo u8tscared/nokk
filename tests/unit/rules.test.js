@@ -41,9 +41,15 @@ describe('règles de la tournée', () => {
     expect(s.amount).toBe(1500);
   });
   it('immeuble : terminé quand tous les logements sont vus', () => {
-    const b = { id: 'b', flats: 2 };
+    const b = { id: 'b', flats: 2, flatsSet: true };
     expect(doorState(b, [{ id: 'a', result: 'donne', amount: 500, unit: '1', ts: 1 }]).state).toBe('partiel');
     expect(doorState(b, [{ id: 'a', result: 'donne', amount: 500, unit: '1', ts: 1 }, { id: 'c', result: 'refus', unit: '2', ts: 2 }]).state).toBe('donne');
+  });
+  it('immeuble : le nombre de logements de la carte ne le ferme pas tout seul', () => {
+    const b = { id: 'b', flats: 2 };
+    const two = [{ id: 'a', result: 'donne', amount: 500, unit: '1', ts: 1 }, { id: 'c', result: 'refus', unit: '2', ts: 2 }];
+    expect(doorState(b, two).state).toBe('partiel');
+    expect(doorState(b, [...two, { id: 'f', result: 'absent', closed: true, unit: 'Fin', ts: 3 }]).closed).toBe(true);
   });
   it('totaux et caisse au centime près', () => {
     const v = [
