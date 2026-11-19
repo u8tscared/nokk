@@ -16,14 +16,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Figtree:wght@500;600;700;800&display=swap" rel="stylesheet" />
     <script>
-      // Première visite sur nokkapp.fr depuis un navigateur (pas l'app installée, rien sur cet appareil) :
-      // on montre la page de présentation. Les liens de la page reviennent ici avec un # (#inscription, #demo…).
+      // nokkapp.fr tapé dans un navigateur (pas l'app installée) : on arrive sur la page de présentation.
+      // Les liens de la page reviennent ici avec un # (#inscription, #carte, #demo…), les invitations aussi (#join=).
       try {
         if (/(^|\.)nokkapp\.fr$/.test(location.hostname) && location.pathname === '/' && !location.hash && !location.search
           && !(window.matchMedia && matchMedia('(display-mode: standalone)').matches) && !navigator.standalone) {
-          var seen = false;
-          for (var i = 0; i < localStorage.length; i++) if (/^nokk:/.test(localStorage.key(i))) { seen = true; break; }
-          if (!seen) location.replace('/decouvrir/');
+          location.replace('/decouvrir/');
         }
       } catch (e) {}
     </script>

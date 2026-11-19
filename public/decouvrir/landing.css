@@ -802,3 +802,12 @@ details[open] p { animation: fadeup .5s var(--ease); }
 .caserne-note { margin-top: 14px; font-size: 14.5px; color: var(--ink-2); }
 .dash-badge { position: absolute; z-index: 3; top: -14px; left: 50%; transform: translateX(-50%) rotate(-2deg); white-space: nowrap; font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; background: var(--accent-2); color: #fff; box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent-2) 70%, transparent); }
 .faq-list details a { color: var(--accent-ink); font-weight: 600; }
+
+/* ——— Boîtes aux lettres en photo ——— */
+.boites-shot { margin: 40px 0 0; border-radius: 28px; overflow: hidden; background: #0f2a2c; box-shadow: var(--sh), 0 40px 80px -40px rgba(10, 30, 32, .5); }
+.boites-shot img { display: block; width: 100%; height: auto; }
+.boites-points { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.boites-points li { display: grid; gap: 6px; align-content: start; background: var(--paper); border-radius: 22px; padding: 20px; box-shadow: var(--sh); }
+.boites-points b { font-family: var(--d); font-size: 19px; letter-spacing: -.02em; }
+.boites-points span { color: var(--ink-2); font-size: 15.5px; line-height: 1.5; }
+@media (max-width: 760px) { .boites-points { grid-template-columns: 1fr; } .boites-shot { border-radius: 18px; margin-top: 28px; } }
