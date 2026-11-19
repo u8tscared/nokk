@@ -3,6 +3,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/screens.css';
 import './styles/v2.css';
+import './styles/parcours.css';
 import { App } from './App.jsx';
 import { installRouter } from './lib/nav.js';
 import { installKeyboard } from './lib/keyboard.js';

@@ -6,7 +6,8 @@ import { data, setData, addMember, setOrg, mergeData, switchUser, setCrew, enter
 import { ROLES, go } from '../lib/nav.js';
 import { feel } from '../lib/feedback.js';
 import { inputKinds } from '../lib/keyboard.js';
-import { installHelp } from '../lib/install.jsx';
+import { InstallGuide, openInstall } from './Install.jsx';
+import { currentDevice } from '../lib/device.js';
 import { formatEuro } from '../lib/model.js';
 import { startDemo } from '../lib/demoMode.js';
 import { PinPad } from './Team.jsx';
@@ -72,6 +73,19 @@ function FileJoin() {
   );
 }
 
+// Au téléphone, avant de se connecter : on installe d'abord (sur iPhone, l'icône a sa propre connexion).
+function InstallFirst() {
+  const dev = currentDevice();
+  if (!dev.mobile || dev.standalone) return null;
+  return (
+    <button class="install-first" onClick={openInstall} data-testid="install-first">
+      <span class="in-icon"><Logo size={26} /><i><Icon name="plus" size={11} /></i></span>
+      <span class="grow"><b>Mettez d'abord Nokk sur l'écran d'accueil</b><span class="tiny muted">On vous montre où toucher sur votre téléphone</span></span>
+      <Icon name="chevR" class="chev" />
+    </button>
+  );
+}
+
 export function Login({ onCreate, onLocal }) {
   const [local, setLocal] = useState(false);
   const join = pendingJoin();
@@ -90,6 +104,7 @@ export function Login({ onCreate, onLocal }) {
           <div class="stack s8">
             <SignIn />
             <DemoButton />
+            <InstallFirst />
             <button class="link center" onClick={() => { setLocal(true); onLocal?.(); }} data-testid="no-account">Utiliser sans compte</button>
           </div>
         ) : (
@@ -255,7 +270,7 @@ export function Onboarding({ onBack }) {
               <Field id="ostock1" label="Calendriers reçus pour toute l'amicale"><input id="ostock1" class="input" value={a.stock} onInput={(e) => setA({ ...a, stock: parseInt(e.currentTarget.value.replace(/\D/g, '') || '0', 10) })} {...inputKinds.int} enterKeyHint="next" /></Field>
             </>
           )}
-          {step === 5 && <div class="install-inline">{installHelp()}</div>}
+          {step === 5 && <div class="install-inline"><InstallGuide inline /></div>}
           <div class="sticky-action">
             <Button kind="full" type="submit" sound="" data-testid="ob-next">{step === STEPS - 1 ? 'C\'est parti' : 'Continuer'}</Button>
           </div>

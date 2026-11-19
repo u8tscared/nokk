@@ -8,7 +8,8 @@ import { feel } from '../lib/feedback.js';
 import { simulateOutage } from '../lib/offline.js';
 import { inputKinds } from '../lib/keyboard.js';
 import { applyTheme } from '../lib/theme.js';
-import { installHelp, canInstall, promptInstall } from '../lib/install.jsx';
+import { openInstall } from './Install.jsx';
+import { ParcoursCard } from './Parcours.jsx';
 import { askSwitch } from './Team.jsx';
 import { AccountCard } from './Account.jsx';
 import { AdminEntry } from './Admin.jsx';
@@ -82,11 +83,11 @@ export function SettingsScreen() {
         <button class="row" onClick={() => { simulateOutage(20); toast('Réseau coupé pendant 20 s : continuez à saisir, rien ne se perd'); }}>
           <DotIcon icon="wifiOff" sm tone="warn" /><span class="grow"><span class="t">Tester une coupure</span><span class="s">{online.value ? 'Simule 20 s sans réseau' : 'Hors ligne en ce moment'}</span></span>
         </button>
-        <button class="row" onClick={() => openSheet(() => installHelp(), { label: "Ajouter à l'écran d'accueil" })}>
+        <button class="row" onClick={openInstall} data-testid="settings-install">
           <DotIcon icon="install" sm tone="ok" /><span class="grow"><span class="t">Ajouter à l'écran d'accueil</span><span class="s">Nokk s'ouvre en plein écran, comme une app</span></span>
         </button>
         <button class="row" onClick={() => go('formation')}>
-          <DotIcon icon="book" sm tone="info" /><span class="grow"><span class="t">Formation</span><span class="s">Une leçon courte par écran</span></span>
+          <DotIcon icon="book" sm tone="info" /><span class="grow"><span class="t">Formation</span><span class="s">Votre parcours sur mesure, avec exercices</span></span>
         </button>
         <div class="row">
           <DotIcon icon="sumup" sm tone="muted" /><span class="grow"><span class="t">Terminal SumUp</span><span class="s">Paiement carte enregistré tout seul</span></span><span class="badge-soon">Bientôt</span>
@@ -123,13 +124,15 @@ export function FormationScreen() {
   const [open, setOpen] = useState(null);
   return (
     <div class="page rise">
-      <div class="page-head"><div><h1>Formation</h1><div class="sub">2 minutes pour tout savoir</div></div></div>
+      <div class="page-head"><div><h1>Formation</h1><div class="sub">Sur mesure, à votre rythme</div></div></div>
+      <ParcoursCard />
       <button class="card hrow admin-entry" onClick={() => { feel('tap'); openIntro(); }} data-testid="replay-intro">
         <DotIcon icon="rocket" tone="info" />
         <span class="grow"><span class="card-title">Revoir la présentation</span><span class="small muted" style={{ display: 'block' }}>Nokk en 4 écrans, puis on vous montre où toucher</span></span>
         <Icon name="chevR" class="chev" />
       </button>
       <StartCard />
+      <h3 class="section-title">Aide écran par écran</h3>
       {MENU.map((m) => {
         const l = LESSONS[m.route];
         const on = open === m.route;

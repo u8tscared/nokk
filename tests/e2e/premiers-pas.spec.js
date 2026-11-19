@@ -5,7 +5,7 @@ import { startDemo } from './helpers.js';
 const SHOT = process.env.SHOT;
 const shot = async (page, name) => { if (SHOT) { await page.waitForTimeout(900); await page.screenshot({ path: `${SHOT}/${test.info().project.name}-${name}.png` }); } };
 
-test('nouvelle équipe : présentation animée, puis on montre où toucher', async ({ page }) => {
+test('nouvelle équipe : formation sur mesure proposée, puis on montre où toucher', async ({ page }) => {
   await page.route(/tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com|data\.geopf\.fr|overpass/, (r) => r.abort());
   await page.goto('/');
   await page.getByTestId('no-account').click();
@@ -18,12 +18,12 @@ test('nouvelle équipe : présentation animée, puis on montre où toucher', asy
   await page.locator('#opartner').fill('Inès Diallo');
   for (let i = 0; i < 3; i++) await page.getByTestId('ob-next').click();
   const intro = page.getByTestId('intro');
-  await expect(intro).toBeVisible();
+  await expect(intro).toContainText('Bienvenue Lucas');
   await shot(page, 'intro');
-  for (let i = 0; i < 3; i++) await intro.getByTestId('intro-next').click();
-  await expect(intro).toContainText('Toute l\'équipe');
-  await intro.getByTestId('intro-next').click();
-  // Le projecteur montre le bouton « Nouveau secteur ».
+  await intro.getByTestId('intro-skip').click();
+  await expect(intro).toHaveCount(0);
+  // « Créer un secteur » : le projecteur montre le bouton « Nouveau secteur ».
+  await page.getByTestId('start-sector').click();
   await expect(page.getByTestId('coach')).toBeVisible();
   await expect(page.getByTestId('coach')).toContainText('Nouveau secteur');
   await shot(page, 'coach');

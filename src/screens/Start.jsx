@@ -154,7 +154,7 @@ function Intro({ close }) {
   );
 }
 
-function IntroArt({ k }) {
+export function IntroArt({ k }) {
   if (k === 'sector') return (
     <svg viewBox="0 0 240 150" class="ia">
       <path class="ia-road" d="M0 40h240M0 110h240M60 0v150M170 0v150" />
@@ -263,8 +263,8 @@ export function SoonCard() {
   );
 }
 
-// Quand une équipe vient d'être créée, la micro-formation s'ouvre une seule fois.
+// Quand une équipe vient d'être créée, la formation sur mesure s'ouvre une seule fois.
 export function maybeIntro() {
   if (demo.peek() || flags().intro) return;
-  setTimeout(() => { if (route.peek() === 'secteurs' && !sheets.peek().length && !document.querySelector('[data-testid="creator-map"]') && !data.peek().sectors.length) openIntro(); }, 250);
+  setTimeout(() => { if (route.peek() === 'secteurs' && !sheets.peek().length && !document.querySelector('[data-testid="creator-map"]') && !data.peek().sectors.length) import('./Parcours.jsx').then((m) => m.openWelcome()); }, 250);
 }
