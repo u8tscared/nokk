@@ -15,7 +15,8 @@
   $$('[data-app]').forEach(function (a) {
     var q = ref ? '?ref=' + encodeURIComponent(ref) : '';
     var m = a.getAttribute('data-app');
-    a.href = '../' + q + (/^demo(-pompier|-caserne)?$/.test(m) ? '#' + m : '');
+    // Toujours un # : sans lui, nokkapp.fr renvoie un nouveau visiteur vers cette page.
+    a.href = '../' + q + '#' + (/^(demo(-pompier|-caserne)?|inscription)$/.test(m) ? m : 'carte');
   });
 
   var de = (params.get('de') || '').trim().slice(0, 30);
@@ -360,6 +361,9 @@
       if (e) e.preventDefault();
       show('form'); err.hidden = true;
       try { var d = JSON.parse(localStorage.getItem('nokk:landing:feedback') || '{}'); if (d.message && !msg.value) msg.value = d.message; } catch (_) {}
+      // « Ma caserne est intéressée » : message déjà amorcé.
+      var pre = e && e.currentTarget && e.currentTarget.getAttribute && e.currentTarget.getAttribute('data-prefill');
+      if (pre && msg.value.indexOf(pre.slice(0, 30)) < 0) msg.value = pre + (msg.value ? '\n' + msg.value : '');
       if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
       setTimeout(function () { msg.focus(); }, 60);
     }
