@@ -13,6 +13,8 @@ import { Login, Onboarding, WhoAmI, SaveGate } from './screens/Welcome.jsx';
 import { TeamChoice, AccountBusy, AccountFailed } from './screens/Account.jsx';
 import { AdminScreen, canAdmin } from './screens/Admin.jsx';
 import { Coach } from './screens/Start.jsx';
+import { InstallNudge, noteInstalled } from './screens/Install.jsx';
+import { maybeWelcome } from './screens/Parcours.jsx';
 import { account, accountStep, firstLoad } from './lib/account.js';
 import { authUser } from './lib/auth.js';
 import { exitDemo } from './lib/store.js';
@@ -128,7 +130,10 @@ export function App() {
   if (!ok || r === 'saisir') r = 'carte';
 
   const gate = !demo.value && accountGate(d, creating, setCreating, later, setLater);
-  if (gate) return (<>{gate}<Toasts /></>);
+  const inApp = !gate && (demo.value || !!m);
+  // Premier passage dans l'appli : la formation sur mesure ; première ouverture depuis l'écran d'accueil : bravo.
+  useEffect(() => { if (inApp) { noteInstalled(); maybeWelcome(); } }, [inApp, m?.id]);
+  if (gate) return (<>{gate}<SheetHost /><Toasts /></>);
   if (!demo.value && !m) return (<><WhoAmI /><Toasts /></>);
 
   const Page = PAGES[r];
@@ -143,6 +148,7 @@ export function App() {
           {Page && (
             <div class="page-scroll" key={r} data-testid={'screen-' + r}>
               {(!online.value || demo.value) && <div class="page status-holder"><PageStatus /></div>}
+              {r !== 'formation' && <div class="page nudge-holder"><InstallNudge /></div>}
               <Page />
             </div>
           )}

@@ -52,6 +52,8 @@ async function device(browser, { uid, user, claims }) {
   });
   await page.addInitScript(({ API, token, user }) => {
     window.__nokkApi = API;
+    // La formation sur mesure (testée dans formation.spec.js) ne s'ouvre pas ici.
+    try { if (!localStorage.getItem('nokk:settings:v1')) localStorage.setItem('nokk:settings:v1', JSON.stringify({ parcours: { skipped: 1 } })); } catch {}
     window.__nokkFakeAuth = {
       onChange: (f) => { setTimeout(() => f(user), 0); return () => {}; },
       google: async () => {}, signIn: async () => {}, signUp: async () => {}, reset: async () => {},
