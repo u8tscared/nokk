@@ -64,6 +64,9 @@ if (/^join=/.test(initial)) {
 // Lien profond vers la démo (depuis la page de présentation).
 export const wantsDemo = /^demo(-pompier|-caserne)?$/.test(initial) ? initial : null;
 if (wantsDemo) initial = 'carte';
+// Lien « S'inscrire » de la page de présentation : #inscription ouvre directement la création de compte.
+export const wantsSignup = initial === 'inscription';
+if (wantsSignup) initial = 'carte';
 export const route = signal(initial || 'carte');
 export const sheets = signal([]); // [{ id, render, opts }]
 

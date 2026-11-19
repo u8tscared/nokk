@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Nokk · la tournée des calendriers des sapeurs-pompiers</title>
-  <meta name="description" content="Nokk, l'app des tournées de calendriers des sapeurs-pompiers : secteurs sur la carte, parcours optimisé, saisie porte à porte, caisse, espace caserne, QR « Repassez plus tard ». Marche hors ligne." />
+  <title>Nokk · l'app des pompiers pour la tournée des calendriers</title>
+  <meta name="description" content="Nokk, l'app des sapeurs-pompiers pour la tournée des calendriers : secteurs sur la carte, parcours optimisé, saisie porte à porte, caisse juste, QR « Repassez plus tard ». Gratuite pendant la saison de test, marche hors ligne." />
   <meta name="theme-color" content="#eef2f0" />
   <link rel="canonical" href="https://nokkapp.fr/decouvrir/" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:site_name" content="Nokk" />
   <meta property="og:title" content="Nokk · la tournée des calendriers, enfin simple" />
-  <meta property="og:description" content="Secteurs, parcours, portes, caisse et espace caserne. Gratuit toute cette saison, marche sans réseau." />
+  <meta property="og:description" content="L'app des pompiers pour la tournée : secteurs, parcours, portes et caisse. Gratuite pendant la saison de test, marche sans réseau." />
   <meta property="og:url" content="https://nokkapp.fr/decouvrir/" />
   <meta property="og:image" content="https://nokkapp.fr/decouvrir/og.png" />
   <meta property="og:image:width" content="1200" />
@@ -42,13 +42,13 @@
     <nav class="nav-links" aria-label="Sections">
       <a href="#comment">Comment ça marche</a>
       <a href="#fonctions">Fonctionnalités</a>
-      <a href="#caserne">Espace caserne</a>
+      <a href="#caserne">Espace caserne <span class="soon-chip">bientôt</span></a>
       <a href="#repasser">QR Repassez</a>
       <a href="#faq">Questions</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn ghost sm hide-sm" href="#partager">Partager</a>
-      <a class="btn primary sm" data-app href="../">Ouvrir l'app</a>
+      <a class="btn ghost sm hide-sm" data-app href="../#carte">Se connecter</a>
+      <a class="btn primary sm" data-app="inscription" href="../#inscription">S'inscrire</a>
     </div>
   </header>
 
@@ -74,20 +74,21 @@
 
       <div class="hero-inner">
         <div class="hero-copy">
-          <p class="pill reveal"><span class="pill-dot"></span>Gratuit toute cette saison</p>
+          <p class="pill reveal"><span class="pill-dot"></span>Pour les sapeurs-pompiers · gratuit pendant la saison de test</p>
           <h1 class="hero-title">
             <span class="line"><span>La tournée des</span></span>
             <span class="line"><span>calendriers,</span></span>
             <span class="line"><span class="hl">enfin simple.</span></span>
           </h1>
-          <p class="hero-sub reveal" style="--d:.5s">Vos secteurs sur la carte, le parcours le plus court, chaque porte en deux gestes et la caisse qui tombe juste. Pour le chef de centre comme pour le binôme sur le trottoir. Même sans réseau.</p>
+          <p class="hero-sub reveal" style="--d:.5s">Vos secteurs sur la carte, le parcours le plus court, chaque porte en deux gestes et la caisse qui tombe juste. Pensée pour le pompier et son binôme sur le trottoir. Même sans réseau.</p>
           <div class="hero-ctas reveal" style="--d:.62s">
-            <a class="btn primary lg" data-app="demo" href="../#demo">
+            <a class="btn primary lg" data-app="inscription" href="../#inscription">Créer mon compte gratuit</a>
+            <a class="btn soft lg" data-app="demo-pompier" href="../#demo-pompier">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
               Essayer la démo
             </a>
-            <a class="btn soft lg" data-app href="../">Créer ma caserne</a>
           </div>
+          <p class="hero-note reveal" style="--d:.7s">Sans carte bancaire, sans engagement. 1 minute pour créer son compte.</p>
         </div>
 
         <div class="hero-visual" aria-label="Aperçu de l'app Nokk pendant une tournée" role="img">
@@ -210,7 +211,7 @@
     <section class="how section" id="comment">
       <div class="wrap">
         <p class="kicker reveal">Comment ça marche</p>
-        <h2 class="h2 reveal">De vos vieilles fiches à la première porte, en une soirée.</h2>
+        <h2 class="h2 reveal">De votre plan papier à la première porte, en une soirée.</h2>
         <p class="lead reveal">Une micro-formation est intégrée à chaque écran : une bulle montre où toucher, on fait le geste, on passe à la suite. Personne n'a besoin d'un tuto.</p>
 
         <div class="how-grid">
@@ -224,9 +225,9 @@
             </li>
             <li class="step" data-step="1">
               <span class="step-n">02</span>
-              <h3>Invitez votre équipe</h3>
-              <p>Le chef ajoute ses pompiers par lien ou par e-mail. Chacun reçoit : « Vous êtes affecté au secteur 12 avec Thomas ». Un clic, il est dedans, avec son binôme et sa carte.</p>
-              <ul class="ticks"><li>Rôles : chef, pompier, trésorier</li><li>Binômes du soir, réaffectation en un geste</li></ul>
+              <h3>Embarquez votre binôme</h3>
+              <p>Envoyez-lui un lien par SMS ou WhatsApp : « Tu fais le secteur 12 avec moi ». Un clic, il est dedans, avec la même carte. Ce que l'un saisit, l'autre le voit.</p>
+              <ul class="ticks"><li>Un lien, pas de code à retenir</li><li>Chacun sur son téléphone, une seule tournée</li></ul>
               <div class="step-phone"></div>
             </li>
             <li class="step" data-step="2">
@@ -437,7 +438,7 @@
               <span class="mover m1">TB</span><span class="mover m2">SL</span>
             </div>
             <h3>Binômes en direct</h3>
-            <p>Le chef voit où est chaque équipe. Les rues faites se colorent pour ne jamais repasser au même endroit.</p>
+            <p>Vous voyez où en est votre binôme. Les rues faites se colorent pour ne jamais repasser au même endroit.</p>
           </article>
 
           <article class="card c-history reveal">
@@ -485,18 +486,24 @@
     <section class="caserne section" id="caserne">
       <div class="wrap caserne-grid">
         <div class="caserne-copy">
-          <p class="kicker reveal">Espace caserne</p>
+          <p class="kicker reveal">Espace caserne · bientôt</p>
           <h2 class="h2 reveal">Le chef voit tout. Sans courir après personne.</h2>
+          <div class="soon-banner reveal">
+            <span class="soon-banner-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+            <p><b>En préparation pour les casernes et les amicales.</b> Pour cette saison de test, Nokk s'ouvre d'abord aux pompiers. L'espace caserne est déjà visible en démo, et la formule caserne, prise par l'amicale pour toute l'équipe, arrive ensuite.</p>
+          </div>
           <ul class="big-list">
             <li class="reveal"><b>Inviter en un lien</b><span>Par e-mail ou par lien : chaque pompier arrive directement dans son secteur, avec son binôme.</span></li>
             <li class="reveal"><b>Réaffecter en un geste</b><span>Un binôme indisponible ? Glissez son secteur vers une autre équipe, ils sont prévenus.</span></li>
             <li class="reveal"><b>Suivre en direct</b><span>Qui est où, combien de portes, combien d'euros. Même quand les téléphones reviennent du hors ligne.</span></li>
             <li class="reveal"><b>Comparer d'une année sur l'autre</b><span>Les secteurs qui marchent, ceux qui s'essoufflent, l'€ par porte. Et les exports pour l'amicale.</span></li>
           </ul>
-          <div class="hero-ctas reveal"><a class="btn primary lg" data-app="demo-caserne" href="../#demo-caserne">Essayer la démo chef de caserne</a></div>
+          <div class="hero-ctas reveal"><a class="btn primary lg" data-app="demo-caserne" href="../#demo-caserne">Voir la démo caserne</a><a class="btn ghost lg" href="#avis" data-feedback data-prefill="Notre caserne est intéressée par la formule caserne. Caserne : … Ville : …">Ma caserne est intéressée</a></div>
+          <p class="caserne-note reveal">Dites-nous où vous êtes : on vous prévient dès l'ouverture, et vous aidez à la construire.</p>
         </div>
 
-        <div class="dash-wrap reveal" aria-label="Aperçu du tableau de bord de la caserne" role="img">
+        <div class="dash-wrap reveal" aria-label="Aperçu du futur tableau de bord de la caserne, visible en démo" role="img">
+          <span class="dash-badge">Bientôt · à voir en démo</span>
           <div class="browser">
             <div class="browser-bar"><i></i><i></i><i></i><span>nokk · Caserne de Caluire</span></div>
             <div class="dash">
@@ -663,6 +670,12 @@
         <h2 class="h2 reveal">Ce qui arrive ensuite.</h2>
         <div class="soon-grid">
           <article class="soon-card reveal">
+            <span class="tag">En démo</span>
+            <div class="soon-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M7 42V19l17-11 17 11v23" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M18 42V30h12v12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="24" cy="21" r="3" fill="currentColor"/></svg></div>
+            <h3>Espace caserne et formule amicale</h3>
+            <p>Le tableau de bord du chef, l'équipe, les secteurs et les comptes de l'amicale, au même endroit. Déjà visible en démo, ouvert aux casernes après la saison de test, avec un abonnement pris par l'amicale.</p>
+          </article>
+          <article class="soon-card reveal">
             <span class="tag">Bientôt</span>
             <div class="soon-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="10" y="4" width="28" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><rect x="15" y="10" width="18" height="10" rx="2" fill="currentColor" opacity=".25"/><g fill="currentColor"><circle cx="18" cy="27" r="2"/><circle cx="24" cy="27" r="2"/><circle cx="30" cy="27" r="2"/><circle cx="18" cy="33" r="2"/><circle cx="24" cy="33" r="2"/><circle cx="30" cy="33" r="2"/></g></svg></div>
             <h3>Paiement par carte SumUp</h3>
@@ -683,18 +696,18 @@
       <div class="wrap free-grid">
         <div class="free-price reveal">
           <span class="free-zero">0<sup>€</sup></span>
-          <span class="free-sub">toute cette saison,<br/>pour toutes les casernes</span>
+          <span class="free-sub">pendant la saison de test,<br/>pour les pompiers</span>
         </div>
         <div class="free-copy">
-          <h2 class="h2 reveal">Gratuit toute cette saison.</h2>
-          <p class="lead reveal">Nokk se lance avec de vraies équipes. Cette saison, tout est offert : pas de carte bancaire, pas d'engagement, toutes les fonctionnalités. On vous demande seulement <a href="#avis" data-feedback>vos retours</a>, et d'en parler autour de vous.</p>
-          <p class="plans-intro reveal">Ensuite, deux formules simples :</p>
+          <h2 class="h2 reveal">Gratuit pendant la saison de test.</h2>
+          <p class="lead reveal">Nokk se lance avec de vrais pompiers sur le terrain. Pendant cette saison de test, l'accès est offert : pas de carte bancaire, pas d'engagement. On vous demande seulement <a href="#avis" data-feedback>vos retours</a>, et d'en parler autour de vous.</p>
+          <p class="plans-intro reveal">Après le test, deux formules simples :</p>
           <div class="plans reveal">
-            <div class="plan"><span class="plan-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><b>Formule pompier</b><span>Un pompier prend Nokk pour lui et son binôme, pour la saison.</span></div>
-            <div class="plan"><span class="plan-ico red" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><b>Formule caserne</b><span>L'amicale abonne toute la caserne : espace chef, équipe et secteurs illimités.</span></div>
+            <div class="plan"><span class="plan-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><b>Formule pompier</b><span>Un pompier prend Nokk pour lui et son binôme, pour la saison. C'est celle que vous testez aujourd'hui.</span></div>
+            <div class="plan"><span class="plan-ico red" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><b>Formule caserne <span class="soon-chip">bientôt</span></b><span>L'amicale abonne toute la caserne : espace chef, équipe et secteurs illimités. En préparation, à voir en démo.</span></div>
           </div>
           <p class="plans-note reveal">Les prix seront annoncés avant la saison prochaine.</p>
-          <div class="hero-ctas reveal"><a class="btn primary lg" data-app href="../">Créer ma caserne</a><a class="btn ghost lg" data-app="demo" href="../#demo">Voir la démo</a></div>
+          <div class="hero-ctas reveal"><a class="btn primary lg" data-app="inscription" href="../#inscription">Créer mon compte gratuit</a><a class="btn ghost lg" data-app="demo" href="../#demo">Voir la démo</a></div>
         </div>
       </div>
     </section>
@@ -736,13 +749,14 @@
           <h2 class="h2 reveal">Ce qu'on nous demande le plus.</h2>
         </div>
         <div class="faq-list">
-          <details class="reveal"><summary>C'est gratuit ?</summary><p>Oui, toute cette saison, pour toutes les casernes et amicales, sans carte bancaire ni engagement. Ensuite il y aura deux formules : une formule pompier, pour la saison, et une formule caserne, que l'amicale prend pour toute l'équipe. Les prix seront annoncés avant la saison prochaine.</p></details>
-          <details class="reveal"><summary>Il faut installer quelque chose ?</summary><p>Non, Nokk s'ouvre dans le navigateur. Pour l'avoir comme une app : sur iPhone, Safari puis Partager puis « Sur l'écran d'accueil » ; sur Android, Chrome puis « Installer l'application ».</p></details>
+          <details class="reveal"><summary>C'est gratuit ?</summary><p>Oui, pendant toute la saison de test, sans carte bancaire ni engagement. Ensuite il y aura deux formules : une formule pompier, pour la saison, et une formule caserne, que l'amicale prend pour toute l'équipe. Les prix seront annoncés avant la saison prochaine.</p></details>
+          <details class="reveal"><summary>Notre caserne peut prendre Nokk pour toute l'équipe ?</summary><p>Oui, c'est prévu : la formule caserne, payée par l'amicale, est en préparation et ouvre après la saison de test. L'espace caserne se découvre déjà dans la démo. En attendant, chaque pompier peut créer son compte gratuit et faire sa tournée avec Nokk. <a href="#avis" data-feedback data-prefill="Notre caserne est intéressée par la formule caserne. Caserne : … Ville : …">Laissez-nous un mot</a> et on prévient votre caserne dès l'ouverture.</p></details>
+          <details class="reveal"><summary>Il faut installer quelque chose ?</summary><p>Non, Nokk s'ouvre dans le navigateur. Pour l'avoir comme une app : sur iPhone, Safari puis Partager puis « Sur l'écran d'accueil » ; sur Android, Chrome puis « Installer l'application ». Nokk vous montre comment faire, pas à pas.</p></details>
           <details class="reveal"><summary>Et sans réseau ?</summary><p>Tout marche hors ligne : la carte déjà vue, les portes, la caisse. Les saisies partent dès que le téléphone retrouve du réseau.</p></details>
           <details class="reveal"><summary>Nos anciens plans papier, on les garde ?</summary><p>Prenez-les en photo : Nokk en fait des secteurs sur la vraie carte. Vous pouvez aussi tracer à la main ou coller une liste d'adresses. Et réimprimer chaque secteur en PDF avec la liste des rues.</p></details>
           <details class="reveal"><summary>On garde le reçu papier pour l'habitant ?</summary><p>Oui, le reçu remis à l'habitant reste. Nokk digitalise ce qui se passe derrière : les comptes, la caisse, les remises au trésorier. Les bons de contrôle numériques arrivent bientôt.</p></details>
-          <details class="reveal"><summary>Qui voit les données ?</summary><p>Seule votre caserne. Les pompiers voient leurs secteurs, le chef et le trésorier voient l'ensemble. Les données de l'habitant qui demande un passage ne servent qu'à ce passage.</p></details>
-          <details class="reveal"><summary>On peut essayer sans rien créer ?</summary><p>Oui : le bouton « Essayer la démo » ouvre une vraie tournée avec une équipe de six. Rien n'est enregistré.</p></details>
+          <details class="reveal"><summary>Qui voit les données ?</summary><p>Seulement vous et les équipiers que vous invitez. Les données de l'habitant qui demande un passage ne servent qu'à ce passage.</p></details>
+          <details class="reveal"><summary>On peut essayer sans rien créer ?</summary><p>Oui : le bouton « Essayer la démo » ouvre une vraie tournée, côté pompier ou côté caserne. Rien n'est enregistré.</p></details>
         </div>
       </div>
     </section>
@@ -752,7 +766,7 @@
       <div class="wrap final-inner">
         <svg class="final-logo" width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path class="corner" d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg>
         <h2 class="h2 reveal">Cette année, la tournée tient dans la poche.</h2>
-        <div class="hero-ctas center reveal"><a class="btn primary lg" data-app="demo" href="../#demo">Essayer la démo</a><a class="btn light lg" data-app href="../">Créer ma caserne</a></div>
+        <div class="hero-ctas center reveal"><a class="btn primary lg" data-app="inscription" href="../#inscription">Créer mon compte gratuit</a><a class="btn light lg" data-app="demo" href="../#demo">Essayer la démo</a></div>
       </div>
     </section>
   </main>
@@ -760,7 +774,7 @@
   <footer class="foot">
     <div class="wrap foot-inner">
       <a class="brand" href="#top"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="52" height="48" rx="12" fill="#367a6d"/><rect x="18" y="4" width="6" height="14" rx="3" fill="#12262a"/><rect x="40" y="4" width="6" height="14" rx="3" fill="#12262a"/><path d="M22 50V33a10 10 0 0 1 20 0v17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M58 40v6a12 12 0 0 1-12 12h-6l18-18Z" fill="#d9554f"/></svg><span class="wordmark sm">nokk</span></a>
-      <nav><a data-app href="../">Ouvrir l'app</a><a href="#partager">Partager</a><a href="#faq">Questions</a><a href="#avis" data-feedback>Donner mon avis</a></nav>
+      <nav><a data-app href="../#carte">Ouvrir l'app</a><a data-app="inscription" href="../#inscription">S'inscrire</a><a href="#partager">Partager</a><a href="#faq">Questions</a><a href="#avis" data-feedback>Donner mon avis</a></nav>
     </div>
   </footer>
 
@@ -810,7 +824,7 @@
     </form>
   </dialog>
 
-  <a class="mobile-cta" data-app="demo" href="../#demo">Essayer la démo</a>
+  <a class="mobile-cta" data-app="inscription" href="../#inscription">S'inscrire gratuitement</a>
 
   <script src="qrcode.min.js" defer></script>
   <script src="landing.js" defer></script>

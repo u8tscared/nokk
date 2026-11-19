@@ -8,6 +8,7 @@ import { inputKinds } from '../lib/keyboard.js';
 import { signInGoogle, signInEmail, signUpEmail, resetPassword, authMessage, authUser } from '../lib/auth.js';
 import { account, accountStep, accountError, joinTeam, signOut, downloadBackup, inviteLink, retryAccount, pendingJoin } from '../lib/account.js';
 import { syncState, flush } from '../lib/sync.js';
+import { wantsSignup } from '../lib/nav.js';
 import { online } from '../lib/store.js';
 import { shareFile } from '../lib/share.js';
 
@@ -23,8 +24,9 @@ export function GoogleMark() {
 }
 
 // Boutons de connexion + formulaire e-mail (connexion, création, mot de passe oublié).
+let signupAsked = wantsSignup; // une seule fois, au premier affichage
 export function SignIn({ intro }) {
-  const [mode, setMode] = useState(null); // null | signin | signup | reset | sent
+  const [mode, setMode] = useState(() => { const m = signupAsked ? 'signup' : null; signupAsked = false; return m; }); // null | signin | signup | reset | sent
   const [f, setF] = useState({ email: '', pass: '', name: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
